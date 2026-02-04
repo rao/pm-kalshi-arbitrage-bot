@@ -1,0 +1,21 @@
+{
+  "name": "arbbot",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun src/index.ts",
+    "test": "bun test",
+    "discover": "bun scripts/discover_markets.ts",
+    "discover:watch": "bun scripts/discover_markets.ts --watch"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "viem": "^2.45.1"
+  }
+}
