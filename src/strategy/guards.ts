@@ -150,7 +150,8 @@ export function checkPositionBalance(positions: PositionSnapshot): GuardResult {
   const totalYes = positions.polymarket.yes + positions.kalshi.yes;
   const totalNo = positions.polymarket.no + positions.kalshi.no;
 
-  if (totalYes === totalNo) {
+  const POSITION_BALANCE_TOLERANCE = 2; // Allow up to 2 shares imbalance (fractional fills)
+  if (Math.abs(totalYes - totalNo) <= POSITION_BALANCE_TOLERANCE) {
     return { pass: true };
   }
 

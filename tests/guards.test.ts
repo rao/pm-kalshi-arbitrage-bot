@@ -200,7 +200,25 @@ describe("position balance guards", () => {
       expect(checkPositionBalance(positions)).toEqual({ pass: true });
     });
 
-    test("fails when yes > no (unhedged long yes exposure)", () => {
+    test("passes when fractional fill difference is within tolerance", () => {
+      const positions = {
+        polymarket: { yes: 16.695651, no: 0 },
+        kalshi: { yes: 0, no: 16 },
+        timestamp: Date.now(),
+      };
+      expect(checkPositionBalance(positions)).toEqual({ pass: true });
+    });
+
+    test("passes when imbalance is exactly at tolerance (2 shares)", () => {
+      const positions = {
+        polymarket: { yes: 5, no: 0 },
+        kalshi: { yes: 0, no: 3 },
+        timestamp: Date.now(),
+      };
+      expect(checkPositionBalance(positions)).toEqual({ pass: true });
+    });
+
+    test("fails when yes > no beyond tolerance (unhedged long yes exposure)", () => {
       const positions = {
         polymarket: { yes: 5, no: 0 },
         kalshi: { yes: 0, no: 0 },
@@ -213,29 +231,29 @@ describe("position balance guards", () => {
       expect(result.reason).toContain("totalNo=0");
     });
 
-    test("fails when no > yes (unhedged long no exposure)", () => {
+    test("fails when no > yes beyond tolerance (unhedged long no exposure)", () => {
       const positions = {
         polymarket: { yes: 0, no: 0 },
-        kalshi: { yes: 0, no: 3 },
+        kalshi: { yes: 0, no: 5 },
         timestamp: Date.now(),
       };
       const result = checkPositionBalance(positions);
       expect(result.pass).toBe(false);
       expect(result.reason).toContain("Position imbalance");
       expect(result.reason).toContain("totalYes=0");
-      expect(result.reason).toContain("totalNo=3");
+      expect(result.reason).toContain("totalNo=5");
     });
 
-    test("fails with partial unwind (one leg remaining)", () => {
+    test("fails with large partial unwind (imbalance > 2)", () => {
       const positions = {
-        polymarket: { yes: 5, no: 0 },
-        kalshi: { yes: 0, no: 2 },
+        polymarket: { yes: 8, no: 0 },
+        kalshi: { yes: 0, no: 3 },
         timestamp: Date.now(),
       };
       const result = checkPositionBalance(positions);
       expect(result.pass).toBe(false);
-      expect(result.reason).toContain("totalYes=5");
-      expect(result.reason).toContain("totalNo=2");
+      expect(result.reason).toContain("totalYes=8");
+      expect(result.reason).toContain("totalNo=3");
     });
   });
 });
