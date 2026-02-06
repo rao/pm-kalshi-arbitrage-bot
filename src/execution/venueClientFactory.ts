@@ -146,60 +146,105 @@ async function placePolymarketOrder(
   }
 
   try {
+    // Determine if this is an IOC/FAK order (for sequential execution)
+    const isFakOrder = params.timeInForce === "IOC";
+
     // Log order details
-    console.log(`[POLYMARKET] Submitting ${isMarketOrder ? "MARKET" : "LIMIT"} order:`, JSON.stringify({
+    const orderTypeLabel = isMarketOrder ? "MARKET" : (isFakOrder ? "FAK/IOC" : "FOK");
+    console.log(`[POLYMARKET] Submitting ${orderTypeLabel} order:`, JSON.stringify({
       tokenId: params.marketId,
       price: effectivePrice,
-      size: params.qty,
+      ...(isFakOrder ? { amount: params.qty * effectivePrice } : { size: params.qty }),
       side: params.action,
     }));
 
-    // Place FOK order via client
-    // For "market" orders, we use FOK with aggressive pricing
-    const response = await client.placeFokOrder({
-      tokenId: params.marketId,
-      price: effectivePrice,
-      size: params.qty,
-      side: params.action === "buy" ? PolySide.BUY : PolySide.SELL,
-    });
+    let response: { success: boolean; orderID?: string; orderId?: string; errorMsg?: string; status?: string; takingAmount?: string; makingAmount?: string };
+
+    if (isFakOrder) {
+      // FAK path: use createAndPostMarketOrder with amount (dollars to spend for BUY)
+      const amount = params.action === "buy"
+        ? params.qty * effectivePrice  // BUY: dollars to spend
+        : params.qty;                   // SELL: shares to sell
+      const fakResult = await client.placeFakOrder({
+        tokenId: params.marketId,
+        price: effectivePrice,
+        amount,
+        side: params.action === "buy" ? PolySide.BUY : PolySide.SELL,
+      });
+      response = { ...fakResult, orderID: fakResult.orderId ?? undefined };
+    } else {
+      // FOK path: use createAndPostOrder with size (unchanged)
+      // For "market" orders, we use FOK with aggressive pricing
+      const fokResult = await client.placeFokOrder({
+        tokenId: params.marketId,
+        price: effectivePrice,
+        size: params.qty,
+        side: params.action === "buy" ? PolySide.BUY : PolySide.SELL,
+      });
+      response = { ...fokResult, orderID: fokResult.orderId ?? undefined };
+    }
 
     // Determine fill status
-    // Polymarket FOK returns success=true if order was accepted
-    // status="matched" indicates immediate fill (FOK success)
-    // status="live" indicates order is on the book (shouldn't happen with FOK)
-    const filled = response.success && response.orderId !== null;
+    // success=true + orderId present indicates fill/partial fill
+    const orderId = response.orderId || response.orderID || null;
+    const filled = response.success === true && orderId !== null;
     const matched = response.status === "matched";
 
     // Log detailed response for debugging
-    console.log(`[POLYMARKET] Order response: success=${response.success}, status=${response.status}, orderId=${response.orderId?.substring(0, 20)}...`);
+    console.log(`[POLYMARKET] Order response: success=${response.success}, status=${response.status}, orderId=${orderId?.substring(0, 20) ?? "N/A"}...`);
 
-    // Compute actual fill price from response amounts (not the limit price)
+    // Compute fill qty and price from response amounts
+    let fillQty = 0;
     let actualFillPrice = effectivePrice; // fallback to limit price
+
     if (filled && response.takingAmount && response.makingAmount) {
       const taking = parseFloat(response.takingAmount);
       const making = parseFloat(response.makingAmount);
-      if (params.action === "sell" && making > 0) {
-        // SELL: takingAmount = USDC received, makingAmount = tokens sold
-        actualFillPrice = taking / making;
-      } else if (params.action === "buy" && taking > 0) {
+
+      if (params.action === "buy" && taking > 0) {
         // BUY: takingAmount = tokens received, makingAmount = USDC paid
+        fillQty = taking;
         actualFillPrice = making / taking;
+      } else if (params.action === "sell" && making > 0) {
+        // SELL: takingAmount = USDC received, makingAmount = tokens sold
+        fillQty = making;
+        actualFillPrice = taking / making;
       }
+
+      if (isFakOrder) {
+        // FAK: fillQty from amounts is authoritative (may be partial)
+        console.log(`[POLYMARKET] FAK fill: ${fillQty.toFixed(2)} tokens @ $${actualFillPrice.toFixed(4)} (requested ${params.qty})`);
+      } else {
+        // FOK: full fill expected, use params.qty but log if amounts differ
+        if (Math.abs(fillQty - params.qty) > 0.01) {
+          console.log(`[POLYMARKET] FOK fill qty from amounts (${fillQty.toFixed(2)}) differs from requested (${params.qty})`);
+        }
+        fillQty = params.qty; // FOK: assume full fill
+      }
+
       if (Math.abs(actualFillPrice - effectivePrice) > 0.001) {
         console.log(`[POLYMARKET] Actual fill price: $${actualFillPrice.toFixed(4)} (limit was $${effectivePrice.toFixed(2)})`);
       }
+    } else if (filled) {
+      // No amounts in response — fallback
+      fillQty = isFakOrder ? 0 : params.qty; // FAK with no amounts = treat as 0 fill
+      if (isFakOrder) {
+        console.warn(`[POLYMARKET] FAK response missing takingAmount/makingAmount — treating as 0 fill`);
+      }
     }
 
+    const actuallyFilled = filled && fillQty > 0;
+
     return {
-      success: filled,
-      orderId: response.orderId || null,
-      fillQty: filled ? params.qty : 0,
-      fillPrice: filled ? actualFillPrice : 0,
+      success: actuallyFilled,
+      orderId: orderId,
+      fillQty: actuallyFilled ? fillQty : 0,
+      fillPrice: actuallyFilled ? actualFillPrice : 0,
       venue: "polymarket",
-      status: matched ? "filled" : (filled ? "filled" : "rejected"),
+      status: actuallyFilled ? "filled" as const : "rejected" as const,
       submittedAt,
-      filledAt: filled ? Date.now() : null,
-      error: filled ? null : (response.errorMsg || "Order not filled"),
+      filledAt: actuallyFilled ? Date.now() : null,
+      error: actuallyFilled ? null : (response.errorMsg || "Order not filled"),
     };
   } catch (error) {
     console.error(`[POLYMARKET] Order failed:`, error);

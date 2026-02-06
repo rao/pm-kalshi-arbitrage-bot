@@ -44,6 +44,8 @@ export const RISK_PARAMS = {
   unwindMaxTotalTimeMs: 3000,
   /** Delay before Polymarket unwind sells to allow on-chain settlement (ms) */
   polymarketSettlementDelayMs: 2500,
+  /** Minimum Polymarket IOC fill qty worth hedging on Kalshi (must be >= 1) */
+  minPartialFillQty: 1,
 } as const;
 
 export type RiskParams = typeof RISK_PARAMS;

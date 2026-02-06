@@ -137,7 +137,7 @@ export function logLegSubmit(
 ): void {
   // Console output
   console.log(
-    `[${formatTimestamp()}] LEG ${leg} SUBMIT -> ${params.venue.toUpperCase()} FOK ` +
+    `[${formatTimestamp()}] LEG ${leg} SUBMIT -> ${params.venue.toUpperCase()} ${params.timeInForce} ` +
       `${params.side.toUpperCase()} @ ${formatPrice(params.price)} x${params.qty}`
   );
 

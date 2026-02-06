@@ -26,13 +26,14 @@ export interface LegPlan {
 /**
  * Determine which leg should execute first (A) vs second (B).
  *
- * v0.1 heuristic: Execute the leg with larger available size first.
- * This maximizes the probability of Leg A filling, reducing the chance
- * we need to unwind if Leg B fails.
+ * Always assigns Polymarket as Leg A (IOC/FAK, partial fills OK) and
+ * Kalshi as Leg B (FOK). This ensures that if Leg A doesn't fill,
+ * we exit cleanly with zero risk. Kalshi (which almost always fills)
+ * only submits after Polymarket confirms a fill.
  *
  * @param opportunity - The arbitrage opportunity
- * @param polyQuote - Current Polymarket quote
- * @param kalshiQuote - Current Kalshi quote
+ * @param polyQuote - Current Polymarket quote (unused, kept for API compat)
+ * @param kalshiQuote - Current Kalshi quote (unused, kept for API compat)
  * @returns LegPlan with ordered legs
  */
 export function planLegOrder(
@@ -42,24 +43,15 @@ export function planLegOrder(
 ): LegPlan {
   const [leg0, leg1] = opportunity.legs;
 
-  // Get sizes for each leg based on venue
-  const size0 = getLegSize(leg0, polyQuote, kalshiQuote);
-  const size1 = getLegSize(leg1, polyQuote, kalshiQuote);
+  // Always: Polymarket = Leg A (IOC first), Kalshi = Leg B (FOK second)
+  const polyLeg = leg0.venue === "polymarket" ? leg0 : leg1;
+  const kalshiLeg = leg0.venue === "kalshi" ? leg0 : leg1;
 
-  // Leg with larger size goes first (more likely to fill)
-  if (size0 >= size1) {
-    return {
-      legA: leg0,
-      legB: leg1,
-      reason: `${leg0.venue} has larger size (${size0} >= ${size1})`,
-    };
-  } else {
-    return {
-      legA: leg1,
-      legB: leg0,
-      reason: `${leg1.venue} has larger size (${size1} > ${size0})`,
-    };
-  }
+  return {
+    legA: polyLeg,
+    legB: kalshiLeg,
+    reason: "Polymarket first (IOC), Kalshi second (FOK) — sequential execution",
+  };
 }
 
 /**
@@ -119,13 +111,17 @@ export function buildOrderParams(
 ): OrderParams {
   const marketId = getMarketId(leg, mapping);
 
+  // Leg A (Polymarket) uses IOC/FAK for partial fills; Leg B (Kalshi) uses FOK
+  const timeInForce: "FOK" | "IOC" =
+    legLabel === "A" && leg.venue === "polymarket" ? "IOC" : "FOK";
+
   return {
     venue: leg.venue,
     side: leg.side,
     action: "buy", // v0.1 always buys (buy-both box arb)
     price: leg.price,
     qty,
-    timeInForce: "FOK",
+    timeInForce,
     marketId,
     clientOrderId: generateClientOrderId(leg.venue, legLabel),
   };

@@ -190,6 +190,65 @@ export class PolymarketClient {
   }
 
   /**
+   * Place a Fill-And-Kill (FAK / IOC) order.
+   *
+   * Unlike FOK, FAK allows partial fills — any unfilled portion is canceled.
+   * Uses createAndPostMarketOrder() which takes a UserMarketOrder with an
+   * `amount` field instead of `size`:
+   *   - BUY: amount = dollars to spend
+   *   - SELL: amount = shares to sell
+   *
+   * @param params - Order parameters
+   * @returns Order result with success status and order ID
+   */
+  async placeFakOrder(params: {
+    tokenId: string;
+    price: number;
+    amount: number;
+    side: Side;
+  }): Promise<OrderResult> {
+    const client = this.getClient();
+
+    try {
+      console.log(`[POLYMARKET] Submitting FAK order:`, JSON.stringify({
+        tokenId: params.tokenId.substring(0, 20) + "...",
+        price: params.price,
+        amount: params.amount,
+        side: params.side,
+      }));
+
+      const response = await client.createAndPostMarketOrder(
+        {
+          tokenID: params.tokenId,
+          price: params.price,
+          amount: params.amount,
+          side: params.side,
+        },
+        { tickSize: "0.01", negRisk: false },
+        OrderType.FAK
+      );
+
+      console.log(`[POLYMARKET] FAK Response:`, JSON.stringify(response));
+
+      return {
+        success: response.success === true,
+        orderId: response.orderID || null,
+        errorMsg: response.errorMsg,
+        status: response.status,
+        takingAmount: response.takingAmount,
+        makingAmount: response.makingAmount,
+      };
+    } catch (error) {
+      console.error(`[POLYMARKET] FAK order failed:`, error);
+      return {
+        success: false,
+        orderId: null,
+        errorMsg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
    * Place a Good-Till-Cancel (GTC) order.
    *
    * The order remains on the book until filled or canceled.

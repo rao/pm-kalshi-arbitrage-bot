@@ -320,7 +320,7 @@ export async function executeOpportunity(
       };
     }
 
-    // === LIVE EXECUTION (PARALLEL) ===
+    // === LIVE EXECUTION (SEQUENTIAL: Polymarket IOC -> Kalshi FOK) ===
     if (!venueClients) {
       throw new Error("venueClients required for live execution");
     }
@@ -328,102 +328,69 @@ export async function executeOpportunity(
     logExecutionStart(record);
     const executionStartTs = Date.now();
 
-    // === Submit both legs simultaneously ===
-    record.status = "legs_submitting";
+    // === Step 1: Submit Leg A (Polymarket IOC) ===
+    record.status = "leg_a_submitting";
     legA.submitTs = Date.now();
-    legB.submitTs = Date.now();
 
     // Record decision-to-submit latency
     recordDecisionToSubmit(legA.submitTs - executionStartTs);
-
     logLegSubmit(record.id, "A", legAParams);
-    logLegSubmit(record.id, "B", legBParams);
 
-    // Execute both in parallel with individual timeouts
-    const [legASettled, legBSettled] = await Promise.allSettled([
-      placeOrderWithTimeout(venueClients, legAParams, RISK_PARAMS.legOrderTimeoutMs),
-      placeOrderWithTimeout(venueClients, legBParams, RISK_PARAMS.legOrderTimeoutMs),
-    ]);
-
-    // Extract initial results
-    let legAResult = legASettled.status === "fulfilled"
-      ? legASettled.value
-      : createTimeoutResult(legAParams, legA.submitTs, legASettled.reason);
-    let legBResult = legBSettled.status === "fulfilled"
-      ? legBSettled.value
-      : createTimeoutResult(legBParams, legB.submitTs, legBSettled.reason);
-
-    // === Cancel-then-verify for timed-out orders ===
-    // If one leg filled and the other timed out, the timed-out order may have
-    // actually filled on the venue. We must cancel-then-verify before unwinding.
-    const legATimedOut = legAResult.status === "timeout";
-    const legBTimedOut = legBResult.status === "timeout";
-    const legAFilled = legAResult.success || legAResult.status === "filled";
-    const legBFilled = legBResult.success || legBResult.status === "filled";
-
-    if (legATimedOut && legBFilled && legAResult.orderId) {
-      // Leg A timed out but Leg B filled - cancel and verify Leg A
-      console.log(`[EXECUTOR] Leg A timed out but Leg B filled - cancel-then-verify Leg A (${legAParams.venue})`);
-      legAResult = await cancelAndVerifyOrder(
-        venueClients, legAParams.venue, legAResult.orderId, legAResult
+    let legAResult: OrderResult;
+    try {
+      legAResult = await placeOrderWithTimeout(
+        venueClients, legAParams, RISK_PARAMS.legOrderTimeoutMs
       );
-    } else if (legBTimedOut && legAFilled && legBResult.orderId) {
-      // Leg B timed out but Leg A filled - cancel and verify Leg B
-      console.log(`[EXECUTOR] Leg B timed out but Leg A filled - cancel-then-verify Leg B (${legBParams.venue})`);
-      legBResult = await cancelAndVerifyOrder(
-        venueClients, legBParams.venue, legBResult.orderId, legBResult
-      );
-    } else if (legATimedOut && legBTimedOut) {
-      // Both timed out - try to cancel both (no urgency since neither is confirmed filled)
-      if (legAResult.orderId) {
-        console.log(`[EXECUTOR] Both legs timed out - cancelling Leg A (${legAParams.venue})`);
-        await venueClients.cancelOrder(legAParams.venue, legAResult.orderId).catch(() => {});
-      }
-      if (legBResult.orderId) {
-        console.log(`[EXECUTOR] Both legs timed out - cancelling Leg B (${legBParams.venue})`);
-        await venueClients.cancelOrder(legBParams.venue, legBResult.orderId).catch(() => {});
-      }
+    } catch (error) {
+      legAResult = createTimeoutResult(legAParams, legA.submitTs, error);
     }
 
     legA.result = legAResult;
-    legB.result = legBResult;
-
-    // Log results
-    const legALatency = Date.now() - legA.submitTs!;
-    const legBLatency = Date.now() - legB.submitTs!;
+    const legALatency = Date.now() - legA.submitTs;
     logLegResult(record.id, "A", legAResult, legALatency);
-    logLegResult(record.id, "B", legBResult, legBLatency);
 
-    // Record submit-to-fill latency for successful legs
     if (legAResult.success) {
       recordSubmitToFill(legAParams.venue, legALatency);
     }
-    if (legBResult.success) {
-      recordSubmitToFill(legBParams.venue, legBLatency);
-    }
 
-    // === Handle outcomes ===
-    const legASuccess = legAResult.success || legAResult.status === "filled";
-    const legBSuccess = legBResult.success || legBResult.status === "filled";
+    // === Step 2: Check Leg A result ===
+    const legAFilled = legAResult.success || legAResult.status === "filled";
 
-    // Handle paradox states (status=filled but success=false)
     if (legAResult.status === "filled" && !legAResult.success) {
       console.warn(`[EXECUTOR] PARADOX: Leg A status=filled but success=false - treating as filled`);
     }
-    if (legBResult.status === "filled" && !legBResult.success) {
-      console.warn(`[EXECUTOR] PARADOX: Leg B status=filled but success=false - treating as filled`);
+
+    if (!legAFilled) {
+      // Polymarket IOC didn't fill — clean exit, no risk, no cooldown
+      record.status = "leg_a_failed";
+      record.endTs = Date.now();
+      record.realizedPnl = 0;
+      legB.result = null; // Leg B never submitted
+      incrementExecutions(false);
+      logExecutionComplete(record);
+
+      return {
+        success: false,
+        record,
+        shouldEnterCooldown: false,
+        shouldTriggerKillSwitch: false,
+        error: `Polymarket IOC unfilled: ${legAResult.error ?? legAResult.status}`,
+      };
     }
 
-    if (legASuccess && legBSuccess) {
-      // BOTH FILLED - arb complete
-      return handleBothFilled(record, context, legA, legB, legAResult, legBResult, executionStartTs);
-    }
+    // === Step 3: Leg A filled — prepare Leg B ===
+    legA.fillTs = legAResult.filledAt ?? Date.now();
+    const polyFillQty = legAResult.fillQty;
+    const kalshiFillQty = Math.floor(polyFillQty);
 
-    if (legASuccess && !legBSuccess) {
-      // Only Leg A filled - record position and unwind Leg A
-      legA.fillTs = legAResult.filledAt ?? Date.now();
+    console.log(`[EXECUTOR] Polymarket IOC filled: ${polyFillQty} tokens. Kalshi target: ${kalshiFillQty} contracts.`);
+
+    // Check if fill qty meets minimum for Kalshi hedging
+    if (kalshiFillQty < RISK_PARAMS.minPartialFillQty) {
+      // Fractional fill too small to hedge — unwind the tiny Polymarket position
+      console.log(`[EXECUTOR] Fill qty ${polyFillQty} < minPartialFillQty ${RISK_PARAMS.minPartialFillQty} — unwinding tiny Polymarket position`);
+
       addNotional(legAResult.fillPrice * legAResult.fillQty);
-
       recordFill(
         legAParams.venue,
         legAParams.side,
@@ -439,48 +406,78 @@ export async function executeOpportunity(
         context,
         venueClients,
         "A",
-        `Leg B failed: ${legBResult.error ?? legBResult.status}`
+        `Polymarket fill qty ${polyFillQty} too small to hedge on Kalshi (min=${RISK_PARAMS.minPartialFillQty})`
       );
     }
 
-    if (!legASuccess && legBSuccess) {
-      // Only Leg B filled - record position and unwind Leg B
-      legB.fillTs = legBResult.filledAt ?? Date.now();
-      addNotional(legBResult.fillPrice * legBResult.fillQty);
+    // Record Leg A position
+    addNotional(legAResult.fillPrice * legAResult.fillQty);
+    recordFill(
+      legAParams.venue,
+      legAParams.side,
+      "buy",
+      legAResult.fillQty,
+      legAResult.fillPrice,
+      context.opportunity.intervalKey,
+      legAResult.orderId ?? undefined
+    );
 
-      recordFill(
-        legBParams.venue,
-        legBParams.side,
-        "buy",
-        legBResult.fillQty,
-        legBResult.fillPrice,
-        context.opportunity.intervalKey,
-        legBResult.orderId ?? undefined
+    // Rebuild Leg B params with actual fill qty
+    const legBParamsAdjusted = { ...legBParams, qty: kalshiFillQty };
+    legB.params = legBParamsAdjusted;
+
+    // === Step 4: Submit Leg B (Kalshi FOK) ===
+    record.status = "leg_b_submitting";
+    legB.submitTs = Date.now();
+
+    recordLegAToLegB(legB.submitTs - legA.fillTs);
+    logLegSubmit(record.id, "B", legBParamsAdjusted);
+
+    let legBResult: OrderResult;
+    try {
+      legBResult = await placeOrderWithTimeout(
+        venueClients, legBParamsAdjusted, RISK_PARAMS.legOrderTimeoutMs
       );
+    } catch (error) {
+      legBResult = createTimeoutResult(legBParamsAdjusted, legB.submitTs, error);
+    }
 
-      return await handleParallelUnwind(
-        record,
-        context,
-        venueClients,
-        "B",
-        `Leg A failed: ${legAResult.error ?? legAResult.status}`
+    // Cancel-then-verify for Kalshi timeouts
+    if (legBResult.status === "timeout" && legBResult.orderId) {
+      console.log(`[EXECUTOR] Leg B timed out - cancel-then-verify Kalshi order`);
+      legBResult = await cancelAndVerifyOrder(
+        venueClients, legBParamsAdjusted.venue, legBResult.orderId, legBResult
       );
     }
 
-    // BOTH FAILED - clean exit (no risk)
-    record.status = "both_legs_failed";
-    record.endTs = Date.now();
-    record.realizedPnl = 0;
-    incrementExecutions(false);
-    logExecutionComplete(record);
+    legB.result = legBResult;
+    const legBLatency = Date.now() - legB.submitTs;
+    logLegResult(record.id, "B", legBResult, legBLatency);
 
-    return {
-      success: false,
+    if (legBResult.success) {
+      recordSubmitToFill(legBParamsAdjusted.venue, legBLatency);
+    }
+
+    // === Step 5: Handle outcomes ===
+    const legBSuccess = legBResult.success || legBResult.status === "filled";
+
+    if (legBResult.status === "filled" && !legBResult.success) {
+      console.warn(`[EXECUTOR] PARADOX: Leg B status=filled but success=false - treating as filled`);
+    }
+
+    if (legBSuccess) {
+      // BOTH FILLED — arb complete (box locked)
+      return handleBothFilled(record, context, legA, legB, legAResult, legBResult, executionStartTs);
+    }
+
+    // Kalshi failed — unwind Polymarket position
+    return await handleParallelUnwind(
       record,
-      shouldEnterCooldown: false,
-      shouldTriggerKillSwitch: false,
-      error: `Both legs failed: A=${legAResult.error}, B=${legBResult.error}`,
-    };
+      context,
+      venueClients,
+      "A",
+      `Kalshi FOK failed: ${legBResult.error ?? legBResult.status}`
+    );
   } catch (error) {
     logExecutionError("Executor", error instanceof Error ? error : String(error));
     return {
