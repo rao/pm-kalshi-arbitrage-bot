@@ -42,6 +42,8 @@ export const RISK_PARAMS = {
   unwindLadderStepTimeoutMs: 500,
   /** Hard cap for entire unwind process in ms */
   unwindMaxTotalTimeMs: 3000,
+  /** Delay before Polymarket unwind sells to allow on-chain settlement (ms) */
+  polymarketSettlementDelayMs: 2500,
 } as const;
 
 export type RiskParams = typeof RISK_PARAMS;

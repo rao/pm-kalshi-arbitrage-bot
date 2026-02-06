@@ -173,11 +173,28 @@ async function placePolymarketOrder(
     // Log detailed response for debugging
     console.log(`[POLYMARKET] Order response: success=${response.success}, status=${response.status}, orderId=${response.orderId?.substring(0, 20)}...`);
 
+    // Compute actual fill price from response amounts (not the limit price)
+    let actualFillPrice = effectivePrice; // fallback to limit price
+    if (filled && response.takingAmount && response.makingAmount) {
+      const taking = parseFloat(response.takingAmount);
+      const making = parseFloat(response.makingAmount);
+      if (params.action === "sell" && making > 0) {
+        // SELL: takingAmount = USDC received, makingAmount = tokens sold
+        actualFillPrice = taking / making;
+      } else if (params.action === "buy" && taking > 0) {
+        // BUY: takingAmount = tokens received, makingAmount = USDC paid
+        actualFillPrice = making / taking;
+      }
+      if (Math.abs(actualFillPrice - effectivePrice) > 0.001) {
+        console.log(`[POLYMARKET] Actual fill price: $${actualFillPrice.toFixed(4)} (limit was $${effectivePrice.toFixed(2)})`);
+      }
+    }
+
     return {
       success: filled,
       orderId: response.orderId || null,
       fillQty: filled ? params.qty : 0,
-      fillPrice: filled ? effectivePrice : 0,
+      fillPrice: filled ? actualFillPrice : 0,
       venue: "polymarket",
       status: matched ? "filled" : (filled ? "filled" : "rejected"),
       submittedAt,
@@ -266,7 +283,8 @@ async function placeKalshiOrder(
     }
 
     // Set reduce_only to prevent creating short positions during unwinds
-    if (params.reduceOnly) {
+    // Kalshi only allows reduce_only on IOC orders (not market or FOK)
+    if (params.reduceOnly && params.timeInForce === "IOC") {
       request.reduce_only = true;
     }
 

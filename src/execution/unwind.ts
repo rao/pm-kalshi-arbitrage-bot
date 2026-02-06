@@ -82,6 +82,13 @@ export async function unwindLeg(
   const currentBid = getCurrentBid(filledLeg.leg.side, currentQuote);
   console.log(`[UNWIND] Starting ladder unwind: ${filledLeg.leg.venue} ${filledLeg.leg.side} qty=${totalQty} buyPrice=$${buyPrice.toFixed(2)} currentBid=$${currentBid.toFixed(2)}. Reason: ${reason}`);
 
+  // Polymarket trades settle on-chain — tokens aren't available to sell immediately
+  if (filledLeg.leg.venue === "polymarket") {
+    const delay = RISK_PARAMS.polymarketSettlementDelayMs;
+    console.log(`[UNWIND] Waiting ${delay}ms for Polymarket on-chain settlement...`);
+    await new Promise(r => setTimeout(r, delay));
+  }
+
   // ── Phase 1: Price ladder ──
   const { unwindLadderSteps, unwindLadderStepSize, unwindLadderStepTimeoutMs, unwindMaxTotalTimeMs } = RISK_PARAMS;
   const deadline = startTs + unwindMaxTotalTimeMs;

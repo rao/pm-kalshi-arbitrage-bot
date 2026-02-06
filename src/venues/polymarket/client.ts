@@ -35,6 +35,8 @@ export interface OrderResult {
   orderId: string | null;
   errorMsg?: string;
   status?: string;
+  takingAmount?: string;
+  makingAmount?: string;
 }
 
 /**
@@ -174,6 +176,8 @@ export class PolymarketClient {
         orderId: response.orderID || null,
         errorMsg: response.errorMsg,
         status: response.status,
+        takingAmount: response.takingAmount,
+        makingAmount: response.makingAmount,
       };
     } catch (error) {
       console.error(`[POLYMARKET] FOK order failed:`, error);
