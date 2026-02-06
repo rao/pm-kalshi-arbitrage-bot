@@ -72,29 +72,51 @@ export async function forceLiquidateAll(
   try {
     const positions = getPositions();
 
-    // Build list of positions to liquidate
+    // Compute total across venues
+    const totalYes = positions.polymarket.yes + positions.kalshi.yes;
+    const totalNo = positions.polymarket.no + positions.kalshi.no;
+    const hedgedQty = Math.min(totalYes, totalNo);
+
+    // Only liquidate the UNHEDGED excess — the hedged box is profitable
     const toSell: Array<{ venue: Venue; side: Side; qty: number }> = [];
 
-    if (positions.polymarket.yes > 0) {
-      toSell.push({ venue: "polymarket", side: "yes", qty: positions.polymarket.yes });
-    }
-    if (positions.polymarket.no > 0) {
-      toSell.push({ venue: "polymarket", side: "no", qty: positions.polymarket.no });
-    }
-    if (positions.kalshi.yes > 0) {
-      toSell.push({ venue: "kalshi", side: "yes", qty: positions.kalshi.yes });
-    }
-    if (positions.kalshi.no > 0) {
-      toSell.push({ venue: "kalshi", side: "no", qty: positions.kalshi.no });
+    if (totalYes > totalNo) {
+      // Excess YES — sell enough YES to restore balance
+      let excessRemaining = totalYes - hedgedQty;
+      if (positions.polymarket.yes > 0 && excessRemaining > 0.01) {
+        const polyExcess = Math.min(positions.polymarket.yes, excessRemaining);
+        toSell.push({ venue: "polymarket", side: "yes", qty: polyExcess });
+        excessRemaining -= polyExcess;
+      }
+      if (positions.kalshi.yes > 0 && excessRemaining > 0.01) {
+        const kalshiExcess = Math.min(positions.kalshi.yes, excessRemaining);
+        toSell.push({ venue: "kalshi", side: "yes", qty: kalshiExcess });
+      }
+    } else if (totalNo > totalYes) {
+      // Excess NO — sell enough NO to restore balance
+      let excessRemaining = totalNo - hedgedQty;
+      if (positions.polymarket.no > 0 && excessRemaining > 0.01) {
+        const polyExcess = Math.min(positions.polymarket.no, excessRemaining);
+        toSell.push({ venue: "polymarket", side: "no", qty: polyExcess });
+        excessRemaining -= polyExcess;
+      }
+      if (positions.kalshi.no > 0 && excessRemaining > 0.01) {
+        const kalshiExcess = Math.min(positions.kalshi.no, excessRemaining);
+        toSell.push({ venue: "kalshi", side: "no", qty: kalshiExcess });
+      }
     }
 
     if (toSell.length === 0) {
-      logger.info("[LIQUIDATOR] No positions to liquidate");
+      logger.info("[LIQUIDATOR] No unhedged excess to liquidate (positions are balanced)");
       return { results: [], allClosed: true };
     }
 
     logger.warn(
-      `[LIQUIDATOR] Positions to liquidate: ${toSell.map(
+      `[LIQUIDATOR] Position summary: totalYes=${totalYes.toFixed(2)}, totalNo=${totalNo.toFixed(2)}, ` +
+      `hedged=${hedgedQty.toFixed(2)}, excess=${Math.abs(totalYes - totalNo).toFixed(2)} ${totalYes > totalNo ? "YES" : "NO"}`
+    );
+    logger.warn(
+      `[LIQUIDATOR] Positions to liquidate (excess only): ${toSell.map(
         (p) => `${p.venue} ${p.side}=${p.qty}`
       ).join(", ")}`
     );

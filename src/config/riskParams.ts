@@ -44,6 +44,10 @@ export const RISK_PARAMS = {
   unwindMaxTotalTimeMs: 3000,
   /** Delay before Polymarket unwind sells to allow on-chain settlement (ms) */
   polymarketSettlementDelayMs: 2500,
+  /** Number of retries when checking on-chain balance before unwind sell */
+  unwindBalanceCheckRetries: 3,
+  /** Delay between balance check retries (ms) */
+  unwindBalanceCheckIntervalMs: 2000,
   /** Minimum Polymarket IOC fill qty worth hedging on Kalshi (must be >= 1) */
   minPartialFillQty: 1,
   /** Minimum cash balance per venue before kill switch triggers ($) */

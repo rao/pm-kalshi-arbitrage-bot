@@ -89,34 +89,56 @@ export async function unwindLeg(
     await new Promise(r => setTimeout(r, delay));
   }
 
-  // After settlement delay, query actual on-chain balance.
+  // After settlement delay, query actual on-chain balance with retries.
   // CLOB-reported fillQty may exceed actual balance due to on-chain fee deduction.
+  // Tokens may not be visible yet if settlement is slow — retry before giving up.
   if (filledLeg.leg.venue === "polymarket" && venueClients.getTokenBalance) {
-    try {
-      const actualBalance = await venueClients.getTokenBalance(
-        "polymarket",
-        filledLeg.params.marketId
-      );
-      if (actualBalance > 0 && actualBalance < remainingQty) {
-        console.warn(
-          `[UNWIND] On-chain balance (${actualBalance.toFixed(4)}) < CLOB fill (${totalQty}). ` +
-          `Adjusting sell qty (diff likely on-chain fees).`
+    const maxRetries = RISK_PARAMS.unwindBalanceCheckRetries;
+    const retryIntervalMs = RISK_PARAMS.unwindBalanceCheckIntervalMs;
+    let actualBalance = 0;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        actualBalance = await venueClients.getTokenBalance(
+          "polymarket",
+          filledLeg.params.marketId
         );
-        remainingQty = actualBalance;
-      } else if (actualBalance <= 0) {
-        console.warn(`[UNWIND] On-chain balance is 0 — position may have already settled`);
+        if (actualBalance > 0) {
+          if (actualBalance < remainingQty) {
+            console.warn(
+              `[UNWIND] On-chain balance (${actualBalance.toFixed(4)}) < CLOB fill (${totalQty}). Adjusting sell qty.`
+            );
+            remainingQty = actualBalance;
+          }
+          break; // balance found, proceed to sell
+        }
+        // Balance is 0
+        if (attempt < maxRetries) {
+          console.warn(
+            `[UNWIND] On-chain balance is 0 (attempt ${attempt}/${maxRetries}), retrying in ${retryIntervalMs}ms...`
+          );
+          await new Promise(r => setTimeout(r, retryIntervalMs));
+        } else {
+          console.warn(
+            `[UNWIND] On-chain balance still 0 after ${maxRetries} attempts. Skipping sell — tokens not settled.`
+          );
+          remainingQty = 0;
+        }
+      } catch (error) {
+        console.warn(
+          `[UNWIND] Balance check attempt ${attempt} failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+        if (attempt === maxRetries) {
+          console.warn(`[UNWIND] All balance checks failed, attempting sell with CLOB fill qty`);
+        }
       }
-    } catch (error) {
-      console.warn(
-        `[UNWIND] Failed to query token balance, using CLOB fill qty: ` +
-        `${error instanceof Error ? error.message : String(error)}`
-      );
     }
   }
 
   // ── Phase 1: Price ladder ──
   const { unwindLadderSteps, unwindLadderStepSize, unwindLadderStepTimeoutMs, unwindMaxTotalTimeMs } = RISK_PARAMS;
-  const deadline = startTs + unwindMaxTotalTimeMs;
+  // Deadline starts AFTER settlement delay + balance checks (not from startTs)
+  const deadline = Date.now() + unwindMaxTotalTimeMs;
 
   for (let step = 1; step <= unwindLadderSteps && remainingQty > 0; step++) {
     if (Date.now() >= deadline) {
@@ -223,8 +245,27 @@ export async function unwindLeg(
       filledAt: endTs,
       error: remainingQty > 0 ? `${remainingQty} contracts unfilled` : null,
     };
+  } else if (remainingQty === 0 && totalQty > 0) {
+    // Tokens not visible on-chain yet — NOT a confirmed total loss.
+    // The liquidator will handle selling once tokens settle.
+    console.warn(
+      `[UNWIND] Tokens not visible on-chain (settlement pending). ` +
+      `NOT recording as total loss. Manual check required for ${totalQty} tokens.`
+    );
+    realizedLoss = 0;
+    result = {
+      success: false,
+      orderId: null,
+      fillQty: 0,
+      fillPrice: 0,
+      venue: filledLeg.leg.venue,
+      status: "timeout",
+      submittedAt: startTs,
+      filledAt: null,
+      error: "Tokens not settled on-chain — position may still exist",
+    };
   } else {
-    // Nothing filled at all
+    // Nothing filled at all (but we did attempt sells)
     realizedLoss = estimateMaxUnwindLoss(buyPrice, totalQty);
     console.error(`[UNWIND] All attempts failed. Assuming total loss: $${realizedLoss.toFixed(4)}`);
 
