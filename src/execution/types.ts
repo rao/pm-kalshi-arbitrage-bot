@@ -57,6 +57,8 @@ export interface OrderParams {
   marketId: string;
   /** Client-generated order ID for tracking */
   clientOrderId: string;
+  /** If true, order can only reduce an existing position (prevents creating short positions) */
+  reduceOnly?: boolean;
 }
 
 /**

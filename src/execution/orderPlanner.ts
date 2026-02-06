@@ -169,6 +169,7 @@ export function buildUnwindOrderParams(
     orderType: "market",
     marketId,
     clientOrderId: generateClientOrderId(leg.venue, "U"), // "U" for unwind
+    reduceOnly: true,
   };
 }
 
@@ -203,6 +204,7 @@ export function buildLadderUnwindParams(
     timeInForce: leg.venue === "kalshi" ? "IOC" : "FOK",
     marketId,
     clientOrderId: generateClientOrderId(leg.venue, "U"),
+    reduceOnly: true,
   };
 }
 

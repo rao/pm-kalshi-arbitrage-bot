@@ -31,7 +31,7 @@ export const RISK_PARAMS = {
   /** Timeout for individual leg orders (ms) - prevents getting stuck */
   legOrderTimeoutMs: 10000,
   /** Maximum contracts per trade (hard cap for dynamic sizing) */
-  maxQtyPerTrade: 12,
+  maxQtyPerTrade: 25,
   /** Fraction of available book depth to use (safety buffer for book movement) */
   bookDepthFraction: 0.80,
   /** Number of price ladder steps before market fallback during unwind */

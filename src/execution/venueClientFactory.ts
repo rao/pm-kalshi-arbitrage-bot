@@ -265,6 +265,11 @@ async function placeKalshiOrder(
       request.no_price = priceInCents;
     }
 
+    // Set reduce_only to prevent creating short positions during unwinds
+    if (params.reduceOnly) {
+      request.reduce_only = true;
+    }
+
     // Set time_in_force for limit orders only
     if (!isMarketOrder) {
       if (params.timeInForce === "FOK") {
@@ -300,21 +305,58 @@ async function placeKalshiOrder(
     const order = response.order;
     const isIOC = params.timeInForce === "IOC";
 
+    // Initial fill detection from order response
     // For IOC orders: partial fills are expected. The order may show status
     // "canceled" (remainder canceled after partial fill) or "executed" (fully filled).
-    // Use count - remaining_count as the authoritative fill quantity.
+    // Use count - remaining_count as the initial fill quantity estimate.
     // For FOK/market: either fully filled (executed) or rejected (canceled).
     const responseFillQty = (order.count ?? 0) - (order.remaining_count ?? 0);
 
     let filled: boolean;
     let fillQty: number;
+    let fillPrice = 0;
 
     if (isIOC) {
-      // IOC: any fill counts as success
+      // IOC: initial estimate from order response
       fillQty = responseFillQty > 0 ? responseFillQty : 0;
       filled = fillQty > 0;
-      if (filled) {
-        console.log(`[KALSHI] IOC partial fill: ${fillQty}/${params.qty} contracts filled`);
+
+      // CRITICAL: For IOC orders, ALWAYS query Fills API as the authoritative source.
+      // The createOrder response may not accurately reflect IOC fills (remaining_count
+      // can equal count even when the order filled immediately).
+      try {
+        // Brief delay to allow Kalshi's system to record the fill
+        await new Promise(r => setTimeout(r, 200));
+        const fillsResponse = await kalshiGetFills(clients.auth, { order_id: order.order_id });
+        if (fillsResponse.fills.length > 0) {
+          // Calculate total qty and VWAP from actual fills
+          let totalCost = 0;
+          let totalFillQty = 0;
+          for (const fill of fillsResponse.fills) {
+            const price = (order.side === "yes" ? fill.yes_price : fill.no_price) / 100;
+            totalCost += price * fill.count;
+            totalFillQty += fill.count;
+          }
+          if (totalFillQty > 0) {
+            // Override with authoritative fill data
+            if (!filled) {
+              console.warn(`[KALSHI] IOC fill detected via Fills API but NOT by order response! remaining_count=${order.remaining_count}, count=${order.count}, status=${order.status}`);
+            }
+            filled = true;
+            fillQty = totalFillQty;
+            fillPrice = totalCost / totalFillQty;
+            console.log(`[KALSHI] IOC fill confirmed via Fills API: ${fillQty}/${params.qty} contracts @ $${fillPrice.toFixed(4)} (${fillsResponse.fills.length} fills)`);
+          }
+        }
+        if (!filled) {
+          console.log(`[KALSHI] IOC order: no fills detected (order response: ${responseFillQty}/${params.qty}, Fills API: 0 fills)`);
+        }
+      } catch (fillsError) {
+        console.warn(`[KALSHI] Failed to query Fills API for IOC order, using order response data: ${fillsError instanceof Error ? fillsError.message : String(fillsError)}`);
+        // Fall through to order response fill price if we had a fill from order response
+        if (filled) {
+          fillPrice = (order.side === "yes" ? order.yes_price : order.no_price) / 100;
+        }
       }
     } else {
       filled = order.status === "executed";
@@ -327,35 +369,34 @@ async function placeKalshiOrder(
           fillQty = responseFillQty;
         }
       }
-    }
 
-    // Get actual fill price from fills API (order response price may be the limit, not the execution price)
-    let fillPrice = 0;
-    if (filled) {
-      // Default to the order response price
-      fillPrice = (order.side === "yes" ? order.yes_price : order.no_price) / 100;
+      // Get actual fill price for non-IOC filled orders
+      if (filled) {
+        // Default to the order response price
+        fillPrice = (order.side === "yes" ? order.yes_price : order.no_price) / 100;
 
-      // For market and IOC orders, query fills API to get the actual execution price
-      // The order's yes_price/no_price reflects the limit, not the fill
-      if (isMarketOrder || isIOC) {
-        try {
-          const fillsResponse = await kalshiGetFills(clients.auth, { order_id: order.order_id });
-          if (fillsResponse.fills.length > 0) {
-            // Calculate volume-weighted average price across all fills
-            let totalCost = 0;
-            let totalQty = 0;
-            for (const fill of fillsResponse.fills) {
-              const price = (order.side === "yes" ? fill.yes_price : fill.no_price) / 100;
-              totalCost += price * fill.count;
-              totalQty += fill.count;
+        // For market orders, query fills API to get the actual execution price
+        // The order's yes_price/no_price reflects the limit, not the fill
+        if (isMarketOrder) {
+          try {
+            const fillsResponse = await kalshiGetFills(clients.auth, { order_id: order.order_id });
+            if (fillsResponse.fills.length > 0) {
+              // Calculate volume-weighted average price across all fills
+              let totalCost = 0;
+              let totalQty = 0;
+              for (const fill of fillsResponse.fills) {
+                const price = (order.side === "yes" ? fill.yes_price : fill.no_price) / 100;
+                totalCost += price * fill.count;
+                totalQty += fill.count;
+              }
+              if (totalQty > 0) {
+                fillPrice = totalCost / totalQty;
+                console.log(`[KALSHI] Actual fill price from fills API: $${fillPrice.toFixed(4)} (${fillsResponse.fills.length} fills)`);
+              }
             }
-            if (totalQty > 0) {
-              fillPrice = totalCost / totalQty;
-              console.log(`[KALSHI] Actual fill price from fills API: $${fillPrice.toFixed(4)} (${fillsResponse.fills.length} fills)`);
-            }
+          } catch (fillsError) {
+            console.warn(`[KALSHI] Failed to query fills API for actual price, using order price: ${fillsError instanceof Error ? fillsError.message : String(fillsError)}`);
           }
-        } catch (fillsError) {
-          console.warn(`[KALSHI] Failed to query fills API for actual price, using order price: ${fillsError instanceof Error ? fillsError.message : String(fillsError)}`);
         }
       }
     }
