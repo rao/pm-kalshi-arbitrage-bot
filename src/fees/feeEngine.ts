@@ -1,12 +1,16 @@
 /**
  * Fee estimation engine for cross-venue arbitrage.
  *
- * Conservative worst-case fee assumptions for v0.1.
- * These are intentionally pessimistic until empirical fills confirm actual costs.
+ * Exact venue fee formulas:
  *
- * Fee sources:
- * - Polymarket: ~2% taker fee on fill value
- * - Kalshi: ~1% per side + contract fees (~$0.01-0.03 per contract)
+ * Kalshi: fee = ceil_cents(0.07 * contracts * price * (1 - price))
+ *   - Parabolic: max fee at price=0.50, zero at extremes (0 or 1)
+ *   - Rounded up to nearest cent ($0.01)
+ *
+ * Polymarket: fee = ceil_4dp(shares * price * 0.25 * (price * (1 - price))^2)
+ *   - Quartic: max fee is 1.56% of notional at price=0.50
+ *   - Rounded up to 4 decimal places ($0.0001)
+ *   - Very small trades near extremes may incur no fee
  */
 
 /**
@@ -22,56 +26,54 @@ export interface FeeEstimate {
 }
 
 /**
- * Polymarket fee parameters (conservative estimates).
- *
- * Polymarket charges a taker fee on matched trades.
- * Using 2% as worst-case estimate.
+ * Round up to nearest cent ($0.01).
  */
-const POLYMARKET_TAKER_FEE_RATE = 0.02;
+function ceilCents(dollars: number): number {
+  return Math.ceil(dollars * 100) / 100;
+}
 
 /**
- * Kalshi fee parameters (conservative estimates).
- *
- * Kalshi has:
- * - A percentage-based fee (around 1% per side)
- * - A per-contract fee (~$0.01-0.03)
- *
- * Using conservative estimates that combine both.
+ * Round up to 4 decimal places ($0.0001).
  */
-const KALSHI_FEE_RATE = 0.01;
-const KALSHI_PER_CONTRACT_FEE = 0.03;
+function ceil4dp(dollars: number): number {
+  return Math.ceil(dollars * 10000) / 10000;
+}
 
 /**
  * Estimate fees for a single leg on Polymarket.
  *
+ * Exact formula: ceil_4dp(shares * price * 0.25 * (price * (1 - price))^2)
+ * Max fee is 1.56% of notional at price = 0.50.
+ *
  * @param price - Fill price (0-1)
- * @param qty - Number of contracts
+ * @param qty - Number of shares
  * @returns Estimated fee in dollars
  */
 export function estimatePolymarketFee(price: number, qty: number): number {
-  const notional = price * qty;
-  return notional * POLYMARKET_TAKER_FEE_RATE;
+  const pq = price * (1 - price);
+  const raw = qty * price * 0.25 * pq * pq;
+  return ceil4dp(raw);
 }
 
 /**
  * Estimate fees for a single leg on Kalshi.
+ *
+ * Exact formula: ceil_cents(0.07 * contracts * price * (1 - price))
+ * Max fee at price = 0.50: ceil_cents(0.07 * 1 * 0.25) = $0.02
  *
  * @param price - Fill price (0-1)
  * @param qty - Number of contracts
  * @returns Estimated fee in dollars
  */
 export function estimateKalshiFee(price: number, qty: number): number {
-  const notional = price * qty;
-  const percentageFee = notional * KALSHI_FEE_RATE;
-  const contractFee = qty * KALSHI_PER_CONTRACT_FEE;
-  return percentageFee + contractFee;
+  const raw = 0.07 * qty * price * (1 - price);
+  return ceilCents(raw);
 }
 
 /**
  * Estimate total fees for a 2-leg box trade.
  *
  * Assumes one leg on Polymarket, one leg on Kalshi.
- * Uses average price of 0.50 as a conservative middle estimate.
  *
  * @param polyPrice - Price of Polymarket leg (0-1)
  * @param kalshiPrice - Price of Kalshi leg (0-1)
@@ -96,16 +98,12 @@ export function estimateFees(
 /**
  * Get a conservative total fee buffer for a box trade.
  *
- * Uses worst-case assumptions:
- * - 2 legs at ~0.50 price each
- * - 1 contract per leg
- *
- * This is the default fee buffer used when specific prices aren't known.
+ * Uses worst-case assumptions (price=0.50 for both legs).
+ * This is used as a fallback; the scanner computes dynamic fees from actual prices.
  *
  * @returns Total fee buffer in dollars
  */
 export function getFeeBuffer(): number {
-  // Conservative estimate: assume both legs around $0.50
   const avgPrice = 0.5;
   const estimate = estimateFees(avgPrice, avgPrice, 1);
   return estimate.totalFeeBuffer;

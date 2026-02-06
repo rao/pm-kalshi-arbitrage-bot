@@ -8,6 +8,7 @@
 import type { NormalizedQuote } from "../normalization/types";
 import { isValidQuote } from "../normalization/types";
 import { computeEdge } from "../fees/edge";
+import { getFeeBufferForPrices } from "../fees/feeEngine";
 import { isValidVenuePrice } from "./guards";
 import { calculateMinQuantityForPolymarket, RISK_PARAMS } from "../config/riskParams";
 import type {
@@ -161,8 +162,11 @@ export function scanForArbitrage(context: ScanContext): ScanResult {
     };
   }
 
-  // Compute edge
-  const edgeResult = computeEdge(box.yesAsk, box.noAsk, feeBuffer, slippageBuffer);
+  // Compute edge with dynamic price-specific fees
+  const polyPrice = box.yesVenue === "polymarket" ? box.yesAsk : box.noAsk;
+  const kalshiPrice = box.yesVenue === "kalshi" ? box.yesAsk : box.noAsk;
+  const dynamicFeeBuffer = getFeeBufferForPrices(polyPrice, kalshiPrice, 1);
+  const edgeResult = computeEdge(box.yesAsk, box.noAsk, dynamicFeeBuffer, slippageBuffer);
 
   // Check if profitable
   if (!edgeResult.profitable) {
