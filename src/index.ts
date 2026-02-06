@@ -56,6 +56,7 @@ import {
   logExecutionError,
 } from "./logging/executionLogger";
 import { getPositions, clearPositionsForInterval, setCurrentInterval } from "./state";
+import { startPositionReconciler, stopPositionReconciler } from "./state/positionReconciler";
 import { incrementOpportunities, getMetricsSummary } from "./logging/metrics";
 
 /**
@@ -399,6 +400,7 @@ async function shutdown(): Promise<void> {
   state.logger.stopStatusInterval();
   state.logger.stopMetricsInterval();
   stopBalanceMonitor();
+  stopPositionReconciler();
 
   // Cancel all open orders on both venues
   if (state.venueClients) {
@@ -562,6 +564,24 @@ async function main(): Promise<void> {
           triggerKillSwitch();
           logKillSwitch(balance, RISK_PARAMS.minVenueBalance, `${venue} low balance: $${balance.toFixed(2)}`);
         }
+      },
+    });
+  }
+
+  // Start position reconciler for live trading
+  if (!config.dryRun && state.venueClients) {
+    startPositionReconciler({
+      venueClients: state.venueClients,
+      logger: state.logger,
+      intervalMs: 60000,
+      getCurrentMapping: () => state.discovery?.getStore().getCurrentMapping() ?? null,
+      getQuote: (venue) =>
+        venue === "polymarket" ? state.quoteCache.polymarket : state.quoteCache.kalshi,
+      getVenueClients: () => {
+        if (!state.venueClients) return null;
+        return createLiveVenueClients(state.venueClients, (venue) =>
+          venue === "polymarket" ? state.quoteCache.polymarket : state.quoteCache.kalshi
+        );
       },
     });
   }

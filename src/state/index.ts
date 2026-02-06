@@ -12,6 +12,7 @@ export {
   getNetPosition,
   hasAnyPosition,
   clearPositionsForInterval,
+  setVenuePositions,
   recordOpenOrder,
   removeOpenOrder,
   getOpenOrderCount,
@@ -40,3 +41,9 @@ export {
   type UnhedgedDetails,
   type UnhedgedCheckResult,
 } from "./reconciliation";
+
+// Position reconciler (background venue API reconciliation)
+export {
+  startPositionReconciler,
+  stopPositionReconciler,
+} from "./positionReconciler";

@@ -16,6 +16,8 @@ import type {
   KalshiBatchCancelResponse,
   KalshiGetFillsResponse,
   KalshiGetFillsOptions,
+  KalshiGetPositionsResponse,
+  KalshiGetPositionsOptions,
 } from "./types";
 
 /** Base URL for Kalshi API */
@@ -371,4 +373,45 @@ export async function getFills(
   }
 
   return response.json() as Promise<KalshiGetFillsResponse>;
+}
+
+/**
+ * Get portfolio positions from Kalshi.
+ *
+ * Returns the user's current positions across markets.
+ * A positive `position` value means long YES, negative means long NO.
+ *
+ * @param auth - Initialized KalshiAuth instance
+ * @param options - Query options for filtering positions
+ * @returns Portfolio positions response
+ *
+ * @example
+ * ```ts
+ * const response = await getPortfolioPositions(auth, { ticker: "KXBTC15M-26FEB031730-30" });
+ * for (const pos of response.market_positions) {
+ *   console.log(`${pos.ticker}: ${pos.position} contracts`);
+ * }
+ * ```
+ */
+export async function getPortfolioPositions(
+  auth: KalshiAuth,
+  options: KalshiGetPositionsOptions = {}
+): Promise<KalshiGetPositionsResponse> {
+  const queryString = buildQueryString(options as Record<string, string | number | undefined>);
+  const path = `${API_PATH_PREFIX}/portfolio/positions${queryString}`;
+  const headers = await auth.getHeaders("GET", path);
+
+  const response = await fetch(`${KALSHI_API_BASE}${path}`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Kalshi getPositions failed (${response.status}): ${errorText}`
+    );
+  }
+
+  return response.json() as Promise<KalshiGetPositionsResponse>;
 }

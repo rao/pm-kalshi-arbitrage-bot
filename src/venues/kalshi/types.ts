@@ -356,3 +356,42 @@ export interface KalshiGetFillsOptions {
   /** Pagination cursor */
   cursor?: string;
 }
+
+// ============================================================================
+// Position Types
+// ============================================================================
+
+/**
+ * A single market position from the Kalshi portfolio positions API.
+ */
+export interface KalshiMarketPosition {
+  /** Market ticker */
+  ticker: string;
+  /** Signed position: +N = long YES, -N = long NO */
+  position: number;
+  /** Market exposure in centi-cents */
+  market_exposure: number;
+  /** Realized PnL in centi-cents */
+  realized_pnl: number;
+  /** Total contracts traded */
+  total_traded: number;
+}
+
+/**
+ * Response from getting portfolio positions.
+ */
+export interface KalshiGetPositionsResponse {
+  market_positions: KalshiMarketPosition[];
+  event_positions: unknown[];
+  cursor: string;
+}
+
+/**
+ * Options for querying portfolio positions.
+ */
+export interface KalshiGetPositionsOptions {
+  /** Filter by market ticker */
+  ticker?: string;
+  /** Filter by count: "all" or "with_positions" */
+  count_filter?: string;
+}

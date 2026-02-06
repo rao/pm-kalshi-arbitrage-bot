@@ -167,6 +167,16 @@ export function getPositions(): PositionSnapshot {
 }
 
 /**
+ * Override local positions for a venue with venue-reported values.
+ *
+ * Used by the position reconciler when it detects a mismatch
+ * between local state and the venue API (source of truth).
+ */
+export function setVenuePositions(venue: Venue, positions: VenuePosition): void {
+  state.positions[venue] = { ...positions };
+}
+
+/**
  * Get net position for a specific venue and side.
  */
 export function getNetPosition(venue: Venue, side: Side): number {

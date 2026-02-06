@@ -455,6 +455,30 @@ export class PolymarketClient {
   }
 
   /**
+   * Get the balance of a conditional token (position in a market).
+   *
+   * @param tokenId - The conditional token ID to check
+   * @returns Number of tokens held (0 if none or error)
+   */
+  async getConditionalTokenBalance(tokenId: string): Promise<number> {
+    const client = this.getClient();
+
+    try {
+      const result = await client.getBalanceAllowance({
+        asset_type: "CONDITIONAL" as any,
+        token_id: tokenId,
+      });
+      return parseFloat(result?.balance ?? "0");
+    } catch (error) {
+      console.error(
+        `[POLYMARKET] Failed to get token balance for ${tokenId.substring(0, 20)}...:`,
+        error
+      );
+      return 0;
+    }
+  }
+
+  /**
    * Get the current API credentials.
    */
   getCredentials(): ApiKeyCreds | null {
