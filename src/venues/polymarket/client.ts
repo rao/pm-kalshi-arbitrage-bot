@@ -435,6 +435,26 @@ export class PolymarketClient {
   }
 
   /**
+   * Get USDC collateral balance available for trading.
+   *
+   * @returns Balance in dollars (parsed from string)
+   */
+  async getCollateralBalance(): Promise<number> {
+    const client = this.getClient();
+
+    try {
+      const result = await client.getBalanceAllowance({
+        asset_type: "COLLATERAL" as any,
+      });
+      // result.balance is a string representing USDC amount
+      return parseFloat(result?.balance ?? "0");
+    } catch (error) {
+      console.error(`[POLYMARKET] Failed to get collateral balance:`, error);
+      return 0;
+    }
+  }
+
+  /**
    * Get the current API credentials.
    */
   getCredentials(): ApiKeyCreds | null {

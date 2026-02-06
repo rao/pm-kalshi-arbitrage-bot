@@ -21,6 +21,7 @@ export {
   setCurrentInterval,
   getCurrentInterval,
   getFillHistory,
+  getMarketIdForPosition,
   resetPositionTracker,
   type PositionSnapshot,
   type VenuePosition,

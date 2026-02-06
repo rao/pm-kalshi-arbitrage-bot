@@ -9,9 +9,9 @@
 
 export const RISK_PARAMS = {
   /** Maximum total notional across both venues */
-  maxNotional: 180.0,
+  maxNotional: 200.0,
   /** Maximum notional per venue */
-  maxNotionalPerVenue: 90.0,
+  maxNotionalPerVenue: 100.0,
   /** Number of contracts per trade leg */
   qtyPerTrade: 1,
   /** Minimum net edge after fees/slippage required to trade ($0.04) */
@@ -46,6 +46,8 @@ export const RISK_PARAMS = {
   polymarketSettlementDelayMs: 2500,
   /** Minimum Polymarket IOC fill qty worth hedging on Kalshi (must be >= 1) */
   minPartialFillQty: 1,
+  /** Minimum cash balance per venue before kill switch triggers ($) */
+  minVenueBalance: 10.0,
 } as const;
 
 export type RiskParams = typeof RISK_PARAMS;

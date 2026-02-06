@@ -57,6 +57,10 @@ export {
   getPendingSettlementsForInterval,
   settlePending,
   getSettlementStats,
+  // Liquidation state
+  startLiquidation,
+  isLiquidationInProgress,
+  stopLiquidation,
 } from "./executionState";
 
 // Order planning
@@ -82,6 +86,12 @@ export {
 
 // Main executor
 export { executeOpportunity } from "./executor";
+
+// Forced liquidation
+export { forceLiquidateAll, type ForceLiquidateResult } from "./liquidator";
+
+// Balance monitoring
+export { startBalanceMonitor, stopBalanceMonitor } from "./balanceMonitor";
 
 // Venue client factory for live trading
 export {

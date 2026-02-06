@@ -42,6 +42,9 @@ import {
   initializeVenueClients,
   createLiveVenueClients,
   cancelKalshiOrdersForMarket,
+  forceLiquidateAll,
+  startBalanceMonitor,
+  stopBalanceMonitor,
   type ExecutionContext,
   type VenueClients,
   type InitializedClients,
@@ -52,7 +55,7 @@ import {
   logCooldownEntry,
   logExecutionError,
 } from "./logging/executionLogger";
-import { getPositions } from "./state";
+import { getPositions, clearPositionsForInterval, setCurrentInterval } from "./state";
 import { incrementOpportunities, getMetricsSummary } from "./logging/metrics";
 
 /**
@@ -178,6 +181,19 @@ async function attemptExecution(opportunity: Opportunity): Promise<void> {
         RISK_PARAMS.maxDailyLoss,
         result.error ?? "Daily loss limit exceeded"
       );
+
+      // Fire-and-forget: actively liquidate remaining positions
+      if (state.venueClients) {
+        forceLiquidateAll(state.venueClients, state.logger).then((liqResult) => {
+          if (liqResult.allClosed) {
+            state.logger.info("[KILLSWITCH] All positions liquidated successfully");
+          } else {
+            state.logger.error("[KILLSWITCH] Some positions could NOT be liquidated — manual intervention needed");
+          }
+        }).catch((err) => {
+          state.logger.error(`[KILLSWITCH] Liquidation error: ${err instanceof Error ? err.message : String(err)}`);
+        });
+      }
     }
   } catch (error) {
     logExecutionError(
@@ -298,9 +314,14 @@ function handleCoordinatorEvent(event: CoordinatorEvent): void {
             `realized PnL: $${settlementResult.realized.toFixed(4)}`
         );
       }
+
+      // Clear position tracker for old interval (prevents stale positions carrying over)
+      clearPositionsForInterval(event.oldInterval);
+      state.logger.info(`Cleared positions for interval ${formatIntervalKey(event.oldInterval)}`);
       break;
 
     case "ROLLOVER_COMPLETED":
+      setCurrentInterval(event.newInterval);
       state.logger.info(
         `Rollover completed: now in ${formatIntervalKey(event.newInterval)}`
       );
@@ -377,6 +398,7 @@ async function shutdown(): Promise<void> {
   state.logger.info("Shutting down...");
   state.logger.stopStatusInterval();
   state.logger.stopMetricsInterval();
+  stopBalanceMonitor();
 
   // Cancel all open orders on both venues
   if (state.venueClients) {
@@ -523,6 +545,25 @@ async function main(): Promise<void> {
       );
       process.exit(1);
     }
+  }
+
+  // Start balance monitor for live trading
+  if (!config.dryRun && state.venueClients) {
+    startBalanceMonitor({
+      venueClients: state.venueClients,
+      logger: state.logger,
+      minBalanceDollars: RISK_PARAMS.minVenueBalance,
+      intervalMs: 60000,
+      onLowBalance: (venue, balance) => {
+        if (!isKillSwitchTriggered()) {
+          state.logger.error(
+            `[BALANCE] ${venue} balance $${balance.toFixed(2)} below minimum $${RISK_PARAMS.minVenueBalance} — triggering kill switch`
+          );
+          triggerKillSwitch();
+          logKillSwitch(balance, RISK_PARAMS.minVenueBalance, `${venue} low balance: $${balance.toFixed(2)}`);
+        }
+      },
+    });
   }
 
   // Create discovery (determines venues based on available API keys)

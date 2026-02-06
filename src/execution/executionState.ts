@@ -50,6 +50,11 @@ const state: ExecutionState = {
 let dailyUnwindLoss = 0;
 
 /**
+ * Whether a forced liquidation is currently in progress.
+ */
+let liquidationInProgress = false;
+
+/**
  * Pending settlements state - tracks unrealized PnL until interval ends.
  */
 const pendingSettlements: Map<string, PendingSettlement> = new Map();
@@ -295,6 +300,29 @@ export function getExecutionState(): Readonly<ExecutionState> {
   return { ...state };
 }
 
+// === Liquidation state ===
+
+/**
+ * Mark that a forced liquidation is in progress.
+ */
+export function startLiquidation(): void {
+  liquidationInProgress = true;
+}
+
+/**
+ * Check if a forced liquidation is in progress.
+ */
+export function isLiquidationInProgress(): boolean {
+  return liquidationInProgress;
+}
+
+/**
+ * Mark that a forced liquidation has completed.
+ */
+export function stopLiquidation(): void {
+  liquidationInProgress = false;
+}
+
 /**
  * Reset all state (for testing).
  *
@@ -309,6 +337,7 @@ export function resetAllState(): void {
   state.killSwitchTriggered = false;
   state.totalNotional = 0;
   dailyUnwindLoss = 0;
+  liquidationInProgress = false;
   pendingSettlements.clear();
 }
 

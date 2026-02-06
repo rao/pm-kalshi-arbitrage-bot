@@ -1,0 +1,132 @@
+/**
+ * Periodic balance monitor.
+ *
+ * Checks cash balances on both venues at regular intervals.
+ * If either venue drops below a minimum threshold, triggers the
+ * onLowBalance callback (typically kill switch).
+ */
+
+import type { Logger } from "../logging/logger";
+import type { InitializedClients } from "./venueClientFactory";
+
+const KALSHI_API_BASE = "https://api.elections.kalshi.com";
+
+export interface BalanceMonitorOptions {
+  /** Initialized venue clients */
+  venueClients: InitializedClients;
+  /** Logger instance */
+  logger: Logger;
+  /** Minimum balance in dollars before triggering low balance */
+  minBalanceDollars: number;
+  /** How often to check balances in ms (default: 60000) */
+  intervalMs?: number;
+  /** Callback when a venue has low balance */
+  onLowBalance: (venue: "polymarket" | "kalshi", balance: number) => void;
+}
+
+let monitorInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Start the periodic balance monitor.
+ *
+ * Checks both venues every intervalMs and calls onLowBalance if either
+ * venue's cash balance drops below minBalanceDollars.
+ */
+export function startBalanceMonitor(options: BalanceMonitorOptions): void {
+  const {
+    venueClients,
+    logger,
+    minBalanceDollars,
+    intervalMs = 60000,
+    onLowBalance,
+  } = options;
+
+  if (monitorInterval) {
+    logger.warn("[BALANCE] Monitor already running, stopping old one");
+    stopBalanceMonitor();
+  }
+
+  logger.info(`[BALANCE] Starting balance monitor (interval=${intervalMs}ms, min=$${minBalanceDollars})`);
+
+  // Run first check after a short delay (don't block startup)
+  setTimeout(() => checkBalances(venueClients, logger, minBalanceDollars, onLowBalance), 5000);
+
+  monitorInterval = setInterval(
+    () => checkBalances(venueClients, logger, minBalanceDollars, onLowBalance),
+    intervalMs
+  );
+}
+
+/**
+ * Stop the balance monitor.
+ */
+export function stopBalanceMonitor(): void {
+  if (monitorInterval) {
+    clearInterval(monitorInterval);
+    monitorInterval = null;
+  }
+}
+
+/**
+ * Check balances on both venues.
+ */
+async function checkBalances(
+  venueClients: InitializedClients,
+  logger: Logger,
+  minBalanceDollars: number,
+  onLowBalance: (venue: "polymarket" | "kalshi", balance: number) => void
+): Promise<void> {
+  // Check Kalshi balance
+  if (venueClients.kalshi) {
+    try {
+      const kalshiBalance = await getKalshiBalance(venueClients);
+      logger.debug(`[BALANCE] Kalshi: $${kalshiBalance.toFixed(2)}`);
+
+      if (kalshiBalance < minBalanceDollars) {
+        logger.warn(`[BALANCE] Kalshi balance LOW: $${kalshiBalance.toFixed(2)} < $${minBalanceDollars}`);
+        onLowBalance("kalshi", kalshiBalance);
+      }
+    } catch (error) {
+      logger.warn(`[BALANCE] Failed to check Kalshi balance: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  // Check Polymarket balance
+  if (venueClients.polymarket) {
+    try {
+      const polyBalance = await venueClients.polymarket.getCollateralBalance();
+      logger.debug(`[BALANCE] Polymarket: $${polyBalance.toFixed(2)}`);
+
+      if (polyBalance < minBalanceDollars) {
+        logger.warn(`[BALANCE] Polymarket balance LOW: $${polyBalance.toFixed(2)} < $${minBalanceDollars}`);
+        onLowBalance("polymarket", polyBalance);
+      }
+    } catch (error) {
+      logger.warn(`[BALANCE] Failed to check Polymarket balance: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+}
+
+/**
+ * Get Kalshi portfolio balance in dollars.
+ *
+ * Kalshi returns balance in cents, so we divide by 100.
+ */
+async function getKalshiBalance(venueClients: InitializedClients): Promise<number> {
+  if (!venueClients.kalshi) return 0;
+
+  const path = "/trade-api/v2/portfolio/balance";
+  const headers = await venueClients.kalshi.auth.getHeaders("GET", path);
+
+  const res = await fetch(`${KALSHI_API_BASE}${path}`, {
+    headers: headers as unknown as Record<string, string>,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Kalshi balance check failed: ${res.status}`);
+  }
+
+  const data = (await res.json()) as { balance?: number };
+  // Kalshi balance is in cents
+  return (data.balance ?? 0) / 100;
+}

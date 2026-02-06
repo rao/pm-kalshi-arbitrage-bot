@@ -57,6 +57,8 @@ export interface FillRecord {
   price: number;
   fillTs: number;
   intervalKey: string;
+  /** Market identifier (token ID for Polymarket, ticker for Kalshi) */
+  marketId?: string;
 }
 
 /**
@@ -70,6 +72,8 @@ interface PositionState {
   openOrders: Map<string, OpenOrder>;
   fillHistory: FillRecord[];
   currentIntervalKey: string | null;
+  /** Last known market IDs per venue+side, for liquidation after rollover */
+  lastMarketIds: Map<string, string>;
 }
 
 const state: PositionState = {
@@ -80,6 +84,7 @@ const state: PositionState = {
   openOrders: new Map(),
   fillHistory: [],
   currentIntervalKey: null,
+  lastMarketIds: new Map(),
 };
 
 /** Maximum fills to keep in history */
@@ -97,7 +102,8 @@ export function recordFill(
   qty: number,
   price: number,
   intervalKey: IntervalKey,
-  orderId?: string
+  orderId?: string,
+  marketId?: string
 ): void {
   const venuePos = state.positions[venue];
 
@@ -107,6 +113,11 @@ export function recordFill(
     venuePos.yes += delta;
   } else {
     venuePos.no += delta;
+  }
+
+  // Track market ID for this venue+side (used by liquidator after rollover)
+  if (marketId) {
+    state.lastMarketIds.set(`${venue}_${side}`, marketId);
   }
 
   // Record fill in history
@@ -119,6 +130,7 @@ export function recordFill(
     price,
     fillTs: Date.now(),
     intervalKey: intervalKeyToString(intervalKey),
+    marketId,
   };
 
   state.fillHistory.push(fill);
@@ -266,6 +278,16 @@ export function getFillHistory(intervalKey?: IntervalKey): FillRecord[] {
   return state.fillHistory.filter((f) => f.intervalKey === key);
 }
 
+/**
+ * Get the last known market ID for a venue+side position.
+ *
+ * Used by the liquidator to sell positions even after interval rollover
+ * (when the mapping may no longer contain the old market's token IDs).
+ */
+export function getMarketIdForPosition(venue: Venue, side: Side): string | null {
+  return state.lastMarketIds.get(`${venue}_${side}`) ?? null;
+}
+
 // === Reset (for testing) ===
 
 /**
@@ -277,4 +299,5 @@ export function resetPositionTracker(): void {
   state.openOrders.clear();
   state.fillHistory = [];
   state.currentIntervalKey = null;
+  state.lastMarketIds.clear();
 }

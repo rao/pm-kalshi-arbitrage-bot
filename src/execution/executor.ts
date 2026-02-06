@@ -398,7 +398,8 @@ export async function executeOpportunity(
         legAResult.fillQty,
         legAResult.fillPrice,
         context.opportunity.intervalKey,
-        legAResult.orderId ?? undefined
+        legAResult.orderId ?? undefined,
+        legAParams.marketId
       );
 
       return await handleParallelUnwind(
@@ -419,7 +420,8 @@ export async function executeOpportunity(
       legAResult.fillQty,
       legAResult.fillPrice,
       context.opportunity.intervalKey,
-      legAResult.orderId ?? undefined
+      legAResult.orderId ?? undefined,
+      legAParams.marketId
     );
 
     // Rebuild Leg B params with actual fill qty
@@ -614,7 +616,8 @@ function handleBothFilled(
     legBResult.fillQty,
     legBResult.fillPrice,
     context.opportunity.intervalKey,
-    legBResult.orderId ?? undefined
+    legBResult.orderId ?? undefined,
+    legB.params.marketId
   );
 
   // Record leg A to leg B latency (using fill times)
