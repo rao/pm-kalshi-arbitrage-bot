@@ -197,7 +197,6 @@ export function scanForArbitrage(context: ScanContext): ScanResult {
   const qty = Math.min(safeSize, RISK_PARAMS.maxQtyPerTrade);
 
   // Validate that qty meets Polymarket minimum order constraints
-  const polyPrice = box.yesVenue === "polymarket" ? box.yesAsk : box.noAsk;
   const polyMinQty = calculateMinQuantityForPolymarket(polyPrice);
 
   if (qty < polyMinQty) {
