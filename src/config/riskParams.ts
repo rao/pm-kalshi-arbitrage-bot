@@ -48,6 +48,8 @@ export const RISK_PARAMS = {
   minPartialFillQty: 1,
   /** Minimum cash balance per venue before kill switch triggers ($) */
   minVenueBalance: 10.0,
+  /** Grace period after execution before reconciler acts (ms). Polymarket on-chain settlement can take 5-15s. */
+  reconcilerPostExecGracePeriodMs: 30000,
 } as const;
 
 export type RiskParams = typeof RISK_PARAMS;

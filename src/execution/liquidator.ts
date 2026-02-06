@@ -167,11 +167,30 @@ async function liquidatePosition(
     // Wait before attempt (gives on-chain settlement time to propagate)
     await new Promise((r) => setTimeout(r, delayMs));
 
+    // For Polymarket, check actual on-chain balance and cap sell qty
+    let adjustedRemaining = remaining;
+    if (venue === "polymarket" && clients.polymarket) {
+      try {
+        const actualBalance = await clients.polymarket.getConditionalTokenBalance(marketId);
+        if (actualBalance <= 0) {
+          logger.info(`[LIQUIDATOR] Balance is 0 for ${venue} ${side} — position may have settled`);
+          soldQty = qty;
+          break;
+        }
+        if (actualBalance < remaining) {
+          logger.warn(`[LIQUIDATOR] Actual balance (${actualBalance.toFixed(4)}) < target (${remaining}), adjusting`);
+          adjustedRemaining = actualBalance;
+        }
+      } catch (e) {
+        logger.warn(`[LIQUIDATOR] Could not query balance, using tracker qty`);
+      }
+    }
+
     try {
       let fillQty = 0;
 
       if (venue === "polymarket") {
-        fillQty = await sellOnPolymarket(clients, marketId, side, remaining, logger);
+        fillQty = await sellOnPolymarket(clients, marketId, side, adjustedRemaining, logger);
       } else {
         fillQty = await sellOnKalshi(clients, marketId, side, remaining, logger);
       }

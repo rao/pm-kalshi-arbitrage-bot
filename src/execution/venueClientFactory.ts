@@ -636,6 +636,13 @@ export function createLiveVenueClients(
     },
 
     getQuote,
+
+    getTokenBalance: async (venue: Venue, tokenId: string): Promise<number> => {
+      if (venue === "polymarket" && clients.polymarket) {
+        return clients.polymarket.getConditionalTokenBalance(tokenId);
+      }
+      return 0;
+    },
   };
 }
 

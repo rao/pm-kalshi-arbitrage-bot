@@ -89,6 +89,31 @@ export async function unwindLeg(
     await new Promise(r => setTimeout(r, delay));
   }
 
+  // After settlement delay, query actual on-chain balance.
+  // CLOB-reported fillQty may exceed actual balance due to on-chain fee deduction.
+  if (filledLeg.leg.venue === "polymarket" && venueClients.getTokenBalance) {
+    try {
+      const actualBalance = await venueClients.getTokenBalance(
+        "polymarket",
+        filledLeg.params.marketId
+      );
+      if (actualBalance > 0 && actualBalance < remainingQty) {
+        console.warn(
+          `[UNWIND] On-chain balance (${actualBalance.toFixed(4)}) < CLOB fill (${totalQty}). ` +
+          `Adjusting sell qty (diff likely on-chain fees).`
+        );
+        remainingQty = actualBalance;
+      } else if (actualBalance <= 0) {
+        console.warn(`[UNWIND] On-chain balance is 0 — position may have already settled`);
+      }
+    } catch (error) {
+      console.warn(
+        `[UNWIND] Failed to query token balance, using CLOB fill qty: ` +
+        `${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
   // ── Phase 1: Price ladder ──
   const { unwindLadderSteps, unwindLadderStepSize, unwindLadderStepTimeoutMs, unwindMaxTotalTimeMs } = RISK_PARAMS;
   const deadline = startTs + unwindMaxTotalTimeMs;

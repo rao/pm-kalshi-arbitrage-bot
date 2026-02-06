@@ -18,6 +18,7 @@ import {
   startLiquidation,
   stopLiquidation,
   isInCooldown,
+  resetLastExecutionEndTs,
 } from "../src/execution/executionState";
 import type { IntervalMapping } from "../src/markets/mappingStore";
 import type { NormalizedQuote } from "../src/normalization/types";
@@ -416,6 +417,57 @@ describe("positionReconciler", () => {
       await reconcileTick(options);
 
       expect(placedOrders.length).toBe(0);
+    });
+  });
+
+  describe("post-execution grace period", () => {
+    test("skips tick within post-execution grace period", async () => {
+      // Simulate a recent execution by acquiring and releasing the busy lock
+      // (releaseBusyLock sets lastExecutionEndTs = Date.now())
+      acquireBusyLock();
+      releaseBusyLock();
+
+      // Set local positions as if we just executed an arb
+      recordFill("polymarket", "yes", "buy", 25, 0.89, TEST_INTERVAL);
+      recordFill("kalshi", "no", "buy", 25, 0.04, TEST_INTERVAL);
+
+      // Venue reports polymarket yes=0 (not settled on-chain yet)
+      const options = buildOptions({
+        polyYes: 0,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 25,
+      });
+
+      await reconcileTick(options);
+
+      // Positions should NOT be overridden — grace period protects local tracker
+      const pos = getPositions();
+      expect(pos.polymarket.yes).toBe(25);
+      expect(pos.kalshi.no).toBe(25);
+      expect(placedOrders.length).toBe(0);
+    });
+
+    test("runs normally when grace period has elapsed", async () => {
+      // Reset so lastExecutionEndTs = 0 (effectively infinite time ago)
+      resetLastExecutionEndTs();
+
+      // Local tracker: poly yes=1
+      recordFill("polymarket", "yes", "buy", 1, 0.50, TEST_INTERVAL);
+
+      // Venue says positions are different (poly yes=0, kalshi no=1)
+      const options = buildOptions({
+        polyYes: 0,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 1,
+      });
+
+      await reconcileTick(options);
+
+      // Should override since grace period is not active
+      const pos = getPositions();
+      expect(pos.polymarket.yes).toBe(0);
     });
   });
 });

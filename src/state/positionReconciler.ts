@@ -23,6 +23,7 @@ import {
   enterCooldown,
   addPendingSettlement,
   recordPnl,
+  getLastExecutionEndTs,
 } from "../execution/executionState";
 import { getPortfolioPositions } from "../venues/kalshi/orders";
 import { getCurrentAsk, getCurrentBid } from "../execution/orderPlanner";
@@ -430,6 +431,18 @@ export async function reconcileTick(options: PositionReconcilerOptions): Promise
     const mapping = getCurrentMapping();
     if (!mapping) {
       logger.debug("[RECONCILER] No current mapping, skipping");
+      return;
+    }
+
+    // 1b. Skip if within grace period after last execution.
+    // Venue APIs (especially Polymarket on-chain) may not reflect recent fills yet.
+    // The local tracker is authoritative immediately after execution.
+    const msSinceLastExec = Date.now() - getLastExecutionEndTs();
+    if (msSinceLastExec < RISK_PARAMS.reconcilerPostExecGracePeriodMs) {
+      logger.debug(
+        `[RECONCILER] Within post-execution grace period (${Math.round(msSinceLastExec / 1000)}s / ` +
+        `${RISK_PARAMS.reconcilerPostExecGracePeriodMs / 1000}s), skipping tick`
+      );
       return;
     }
 

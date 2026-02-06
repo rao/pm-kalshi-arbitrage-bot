@@ -55,6 +55,13 @@ let dailyUnwindLoss = 0;
 let liquidationInProgress = false;
 
 /**
+ * Timestamp when the last execution (arb or reconciler corrective) ended.
+ * Used by the reconciler to skip ticks during a grace period while
+ * venue APIs (especially Polymarket on-chain) may not reflect recent fills.
+ */
+let lastExecutionEndTs = 0;
+
+/**
  * Pending settlements state - tracks unrealized PnL until interval ends.
  */
 const pendingSettlements: Map<string, PendingSettlement> = new Map();
@@ -78,6 +85,7 @@ export function acquireBusyLock(): boolean {
 export function releaseBusyLock(): void {
   state.busy = false;
   state.currentExecution = null;
+  lastExecutionEndTs = Date.now();
 }
 
 /**
@@ -294,6 +302,20 @@ export function getLastFailureTs(): number | null {
 }
 
 /**
+ * Get the timestamp when the last execution ended.
+ */
+export function getLastExecutionEndTs(): number {
+  return lastExecutionEndTs;
+}
+
+/**
+ * Reset lastExecutionEndTs (for testing).
+ */
+export function resetLastExecutionEndTs(): void {
+  lastExecutionEndTs = 0;
+}
+
+/**
  * Get a copy of the full execution state (for logging/inspection).
  */
 export function getExecutionState(): Readonly<ExecutionState> {
@@ -338,6 +360,7 @@ export function resetAllState(): void {
   state.totalNotional = 0;
   dailyUnwindLoss = 0;
   liquidationInProgress = false;
+  lastExecutionEndTs = 0;
   pendingSettlements.clear();
 }
 

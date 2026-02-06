@@ -446,8 +446,9 @@ export class PolymarketClient {
       const result = await client.getBalanceAllowance({
         asset_type: "COLLATERAL" as any,
       });
-      // result.balance is a string representing USDC amount
-      return parseFloat(result?.balance ?? "0");
+      const rawBalance = parseFloat(result?.balance ?? "0");
+      // CLOB API returns raw on-chain units (6 decimals for USDC). Convert to dollars.
+      return rawBalance / 1e6;
     } catch (error) {
       console.error(`[POLYMARKET] Failed to get collateral balance:`, error);
       return 0;
@@ -468,7 +469,9 @@ export class PolymarketClient {
         asset_type: "CONDITIONAL" as any,
         token_id: tokenId,
       });
-      return parseFloat(result?.balance ?? "0");
+      const rawBalance = parseFloat(result?.balance ?? "0");
+      // CLOB API returns raw on-chain units (6 decimals). Convert to token count.
+      return rawBalance / 1e6;
     } catch (error) {
       console.error(
         `[POLYMARKET] Failed to get token balance for ${tokenId.substring(0, 20)}...:`,

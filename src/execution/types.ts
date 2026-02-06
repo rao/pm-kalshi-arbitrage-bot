@@ -229,6 +229,8 @@ export interface VenueClients {
   getQuote: (venue: Venue) => NormalizedQuote | null;
   /** Get the status of an order (for cancel-then-verify flow) */
   getOrderStatus: (venue: Venue, orderId: string) => Promise<OrderStatusResult>;
+  /** Get actual token balance for a Polymarket position (for sell qty validation) */
+  getTokenBalance?: (venue: Venue, tokenId: string) => Promise<number>;
 }
 
 /**
