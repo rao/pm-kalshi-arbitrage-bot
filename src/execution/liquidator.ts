@@ -218,10 +218,39 @@ async function liquidatePosition(
       }
 
       if (fillQty > 0) {
-        soldQty += fillQty;
-        // Record the sell in position tracker
-        recordFill(venue, side, "sell", fillQty, 0.01, getIntervalKey(), `liq_${Date.now()}`, marketId);
-        logger.info(`[LIQUIDATOR] Sold ${fillQty} ${venue} ${side}. Total sold: ${soldQty}/${qty}`);
+        // For Polymarket, verify the sell actually executed on-chain.
+        // CLOB can report "matched" while the on-chain tx fails/reverts.
+        if (venue === "polymarket" && clients.polymarket) {
+          try {
+            await new Promise((r) => setTimeout(r, 2000)); // wait for block confirmation
+            const postSellBalance = await clients.polymarket.getConditionalTokenBalance(marketId);
+            const expectedDecrease = fillQty;
+            const actualDecrease = adjustedRemaining - postSellBalance;
+
+            if (actualDecrease < expectedDecrease * 0.5) {
+              logger.warn(
+                `[LIQUIDATOR] Post-sell verification FAILED: balance went from ${adjustedRemaining.toFixed(2)} to ${postSellBalance.toFixed(2)} ` +
+                `(decrease=${actualDecrease.toFixed(2)}, expected=${expectedDecrease.toFixed(2)}). CLOB reported success but on-chain sell did not execute.`
+              );
+              fillQty = Math.max(0, Math.floor(actualDecrease));
+            } else {
+              logger.info(
+                `[LIQUIDATOR] Post-sell verification OK: balance ${adjustedRemaining.toFixed(2)} → ${postSellBalance.toFixed(2)}`
+              );
+            }
+          } catch (e) {
+            logger.warn(`[LIQUIDATOR] Could not verify post-sell balance, trusting CLOB response`);
+          }
+        }
+
+        if (fillQty > 0) {
+          soldQty += fillQty;
+          // Record the sell in position tracker
+          recordFill(venue, side, "sell", fillQty, 0.01, getIntervalKey(), `liq_${Date.now()}`, marketId);
+          logger.info(`[LIQUIDATOR] Sold ${fillQty} ${venue} ${side}. Total sold: ${soldQty}/${qty}`);
+        } else {
+          logger.warn(`[LIQUIDATOR] Sell not confirmed on-chain, will retry on next attempt`);
+        }
       } else {
         logger.warn(`[LIQUIDATOR] No fill on attempt ${attempt} for ${venue} ${side}`);
       }

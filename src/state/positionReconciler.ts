@@ -181,8 +181,13 @@ function compareAndOverride(
     const noMismatch = Math.abs(localNo - report.no) > tolerance;
 
     if (yesMismatch || noMismatch) {
-      logger.warn(
-        `[RECONCILER] MISMATCH on ${report.venue}: ` +
+      const maxDiff = Math.max(
+        Math.abs(localYes - report.yes),
+        Math.abs(localNo - report.no)
+      );
+      const logFn = maxDiff >= 1.0 ? logger.warn.bind(logger) : logger.info.bind(logger);
+      logFn(
+        `[RECONCILER] ${maxDiff >= 1.0 ? "MISMATCH" : "Adjusting"} on ${report.venue}: ` +
           `local(yes=${localYes}, no=${localNo}) vs ` +
           `venue(yes=${report.yes}, no=${report.no}) — overriding local`
       );
@@ -226,8 +231,8 @@ function planCorrectiveAction(
   const totalYes = positions.polymarket.yes + positions.kalshi.yes;
   const totalNo = positions.polymarket.no + positions.kalshi.no;
 
-  if (Math.abs(totalYes - totalNo) < 0.01) {
-    // Balanced, nothing to do
+  if (Math.abs(totalYes - totalNo) < 1.0) {
+    // Balanced (within fee-related tolerance), nothing to do
     return null;
   }
 
@@ -477,8 +482,8 @@ export async function reconcileTick(options: PositionReconcilerOptions): Promise
     const totalYes = positions.polymarket.yes + positions.kalshi.yes;
     const totalNo = positions.polymarket.no + positions.kalshi.no;
 
-    if (Math.abs(totalYes - totalNo) < 0.01) {
-      // Balanced
+    if (Math.abs(totalYes - totalNo) < 1.0) {
+      // Balanced (within fee-related tolerance)
       return;
     }
 
