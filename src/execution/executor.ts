@@ -603,18 +603,9 @@ function handleBothFilled(
   legA.fillTs = legAResult.filledAt ?? Date.now();
   legB.fillTs = legBResult.filledAt ?? Date.now();
 
-  addNotional(legAResult.fillPrice * legAResult.fillQty);
+  // Note: Leg A position and notional are already recorded in the sequential flow
+  // (before Leg B submission), so we only record Leg B here to avoid double-counting.
   addNotional(legBResult.fillPrice * legBResult.fillQty);
-
-  recordFill(
-    legA.params.venue,
-    legA.params.side,
-    "buy",
-    legAResult.fillQty,
-    legAResult.fillPrice,
-    context.opportunity.intervalKey,
-    legAResult.orderId ?? undefined
-  );
 
   recordFill(
     legB.params.venue,
