@@ -11,12 +11,18 @@
  * - Periodic status logging
  */
 
-import { loadConfig, type Config } from "./config/config";
+import {
+  loadConfig,
+  hasKalshiCredentials,
+  hasPolymarketCredentials,
+  type Config,
+} from "./config/config";
 import { RISK_PARAMS } from "./config/riskParams";
 import { MarketDiscovery, type DiscoveryEvent } from "./markets/discovery";
 import {
   MarketDataCoordinator,
   type CoordinatorEvent,
+  type OrderCancellationCallbacks,
 } from "./data/marketDataCoordinator";
 import type { QuoteUpdateEvent, NormalizedQuote } from "./normalization/types";
 import type { IntervalKey } from "./time/interval";
@@ -29,15 +35,16 @@ import {
   executeOpportunity,
   isKillSwitchTriggered,
   isInCooldown,
-  acquireBusyLock,
-  releaseBusyLock,
   enterCooldown,
   triggerKillSwitch,
   getDailyLoss,
+  settlePending,
+  initializeVenueClients,
+  createLiveVenueClients,
+  cancelKalshiOrdersForMarket,
   type ExecutionContext,
   type VenueClients,
-  type OrderParams,
-  type OrderResult,
+  type InitializedClients,
 } from "./execution";
 import {
   logOpportunityDetected,
@@ -45,6 +52,8 @@ import {
   logCooldownEntry,
   logExecutionError,
 } from "./logging/executionLogger";
+import { getPositions } from "./state";
+import { incrementOpportunities, getMetricsSummary } from "./logging/metrics";
 
 /**
  * Quote cache - maintains latest quote per venue.
@@ -66,6 +75,8 @@ interface AppState {
   quoteCache: QuoteCache;
   running: boolean;
   statusIntervalMs: number;
+  /** Initialized venue clients for live trading (null in dry run) */
+  venueClients: InitializedClients | null;
 }
 
 const state: AppState = {
@@ -80,6 +91,7 @@ const state: AppState = {
   },
   running: false,
   statusIntervalMs: 60000, // 60 second status updates
+  venueClients: null,
 };
 
 /**
@@ -123,17 +135,29 @@ async function attemptExecution(opportunity: Opportunity): Promise<void> {
     dryRun: config.dryRun,
   };
 
-  // 6. Log opportunity detection
-  logOpportunityDetected(opportunity, {
-    polyQuote: state.quoteCache.polymarket,
-    kalshiQuote: state.quoteCache.kalshi,
-  });
+  // 6. Log opportunity detection and increment counter
+  incrementOpportunities();
+
+  // Only show opportunity alert in dry run mode
+  // In live mode, execution logs are more relevant
+  if (config.dryRun) {
+    logOpportunityDetected(opportunity, {
+      polyQuote: state.quoteCache.polymarket,
+      kalshiQuote: state.quoteCache.kalshi,
+    });
+  }
 
   // 7. Execute (with null venueClients for dry run)
-  // In production, venueClients would be initialized with real order placement functions
+  // In production, venueClients are initialized at startup with proper auth
   const venueClients: VenueClients | null = config.dryRun
     ? null
-    : createVenueClients();
+    : state.venueClients
+      ? createLiveVenueClients(state.venueClients, (venue) => {
+          return venue === "polymarket"
+            ? state.quoteCache.polymarket
+            : state.quoteCache.kalshi;
+        })
+      : null;
 
   try {
     const result = await executeOpportunity(context, venueClients);
@@ -163,32 +187,53 @@ async function attemptExecution(opportunity: Opportunity): Promise<void> {
   }
 }
 
+
 /**
- * Create venue clients for live trading.
+ * Create order cancellation callbacks for rollover safety.
  *
- * TODO: Implement actual order placement for Polymarket and Kalshi.
- * This is a placeholder that will be filled in when we're ready for live trading.
+ * These callbacks are called by the coordinator during interval rollover
+ * to ensure no stale orders remain from the previous interval.
  */
-function createVenueClients(): VenueClients {
+function createOrderCancellationCallbacks(): OrderCancellationCallbacks {
   return {
-    placeOrder: async (params: OrderParams): Promise<OrderResult> => {
-      // TODO: Implement actual order placement
-      // For now, throw to prevent accidental live trading
-      throw new Error(
-        `Live trading not implemented. Would place ${params.action} ${params.side} on ${params.venue} @ ${params.price}`
-      );
+    cancelKalshiOrders: async (ticker: string): Promise<number> => {
+      if (!state.venueClients?.kalshi) {
+        state.logger.debug(`[ROLLOVER] No Kalshi auth, skipping cancel for ${ticker}`);
+        return 0;
+      }
+      try {
+        const count = await cancelKalshiOrdersForMarket(
+          state.venueClients.kalshi.auth,
+          ticker
+        );
+        if (count > 0) {
+          state.logger.info(`[ROLLOVER] Canceled ${count} Kalshi orders for ${ticker}`);
+        }
+        return count;
+      } catch (error) {
+        state.logger.error(
+          `[ROLLOVER] Failed to cancel Kalshi orders: ${error instanceof Error ? error.message : String(error)}`
+        );
+        return 0;
+      }
     },
-    cancelOrder: async (venue, orderId): Promise<boolean> => {
-      // TODO: Implement actual order cancellation
-      throw new Error(
-        `Live trading not implemented. Would cancel ${orderId} on ${venue}`
-      );
-    },
-    getQuote: (venue) => {
-      if (venue === "polymarket") {
-        return state.quoteCache.polymarket;
-      } else {
-        return state.quoteCache.kalshi;
+    cancelPolymarketOrders: async (upToken: string, downToken: string): Promise<void> => {
+      if (!state.venueClients?.polymarket) {
+        state.logger.debug(`[ROLLOVER] No Polymarket auth, skipping cancel`);
+        return;
+      }
+      try {
+        await state.venueClients.polymarket.cancelMarketOrders({
+          assetId: upToken,
+        });
+        await state.venueClients.polymarket.cancelMarketOrders({
+          assetId: downToken,
+        });
+        state.logger.info(`[ROLLOVER] Canceled Polymarket orders for tokens`);
+      } catch (error) {
+        state.logger.error(
+          `[ROLLOVER] Failed to cancel Polymarket orders: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     },
   };
@@ -244,6 +289,15 @@ function handleCoordinatorEvent(event: CoordinatorEvent): void {
       // Clear quote cache on rollover
       state.quoteCache.polymarket = null;
       state.quoteCache.kalshi = null;
+
+      // Settle pending PnL for the old interval (contracts settle at interval end)
+      const settlementResult = settlePending(event.oldInterval);
+      if (settlementResult.settled.length > 0) {
+        state.logger.info(
+          `Settled ${settlementResult.settled.length} positions for ${formatIntervalKey(event.oldInterval)}, ` +
+            `realized PnL: $${settlementResult.realized.toFixed(4)}`
+        );
+      }
       break;
 
     case "ROLLOVER_COMPLETED":
@@ -312,6 +366,9 @@ function handleDiscoveryEvent(event: DiscoveryEvent): void {
 
 /**
  * Graceful shutdown.
+ *
+ * Cancels all open orders on both venues, logs final position snapshot,
+ * and warns if positions are unbalanced.
  */
 async function shutdown(): Promise<void> {
   if (!state.running) return;
@@ -319,6 +376,62 @@ async function shutdown(): Promise<void> {
 
   state.logger.info("Shutting down...");
   state.logger.stopStatusInterval();
+  state.logger.stopMetricsInterval();
+
+  // Cancel all open orders on both venues
+  if (state.venueClients) {
+    state.logger.info("[SHUTDOWN] Cancelling all open orders...");
+
+    // Cancel Polymarket orders
+    if (state.venueClients.polymarket) {
+      try {
+        const result = await state.venueClients.polymarket.cancelAllOrders();
+        const canceledCount = result.canceled?.length ?? 0;
+        if (canceledCount > 0) {
+          state.logger.info(`[SHUTDOWN] Cancelled ${canceledCount} Polymarket orders`);
+        }
+      } catch (error) {
+        state.logger.error(
+          `[SHUTDOWN] Failed to cancel Polymarket orders: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+
+    // Cancel Kalshi orders (cancel all resting orders)
+    if (state.venueClients.kalshi) {
+      try {
+        const { getOpenOrders, batchCancelOrders } = await import("./venues/kalshi/orders");
+        const { orders } = await getOpenOrders(state.venueClients.kalshi.auth);
+        if (orders.length > 0) {
+          const orderIds = orders.map((o) => o.order_id);
+          await batchCancelOrders(state.venueClients.kalshi.auth, orderIds);
+          state.logger.info(`[SHUTDOWN] Cancelled ${orders.length} Kalshi orders`);
+        }
+      } catch (error) {
+        state.logger.error(
+          `[SHUTDOWN] Failed to cancel Kalshi orders: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+  }
+
+  // Log final position snapshot
+  const finalPositions = getPositions();
+  state.logger.info(
+    `[SHUTDOWN] Final positions: ` +
+    `poly(yes=${finalPositions.polymarket.yes}, no=${finalPositions.polymarket.no}) ` +
+    `kalshi(yes=${finalPositions.kalshi.yes}, no=${finalPositions.kalshi.no})`
+  );
+
+  // Warn if positions are unbalanced
+  const totalYes = finalPositions.polymarket.yes + finalPositions.kalshi.yes;
+  const totalNo = finalPositions.polymarket.no + finalPositions.kalshi.no;
+  if (totalYes !== totalNo) {
+    state.logger.warn(
+      `[SHUTDOWN] WARNING: Positions are UNBALANCED at shutdown! ` +
+      `totalYes=${totalYes}, totalNo=${totalNo}. Manual intervention may be needed.`
+    );
+  }
 
   if (state.coordinator) {
     await state.coordinator.stop();
@@ -348,6 +461,69 @@ async function main(): Promise<void> {
   state.logger.info(
     `Risk params: max=$${RISK_PARAMS.maxNotional}, minEdge=$${RISK_PARAMS.minEdgeNet}`
   );
+
+  // Credential validation for live trading
+  if (!config.dryRun) {
+    if (!hasPolymarketCredentials(config)) {
+      state.logger.error("FATAL: Polymarket credentials required for live trading");
+      state.logger.error("  Set: POLYMARKET_PRIVATE_KEY, POLYMARKET_FUNDER_ADDRESS");
+      process.exit(1);
+    }
+    if (!hasKalshiCredentials(config)) {
+      state.logger.error("FATAL: Kalshi credentials required for live trading");
+      state.logger.error("  Set: KALSHI_API_KEY, KALSHI_PRIVATE_KEY");
+      process.exit(1);
+    }
+
+    // Initialize venue clients for live trading
+    state.logger.info("Initializing venue clients for live trading...");
+    try {
+      state.venueClients = await initializeVenueClients(config);
+      state.logger.info("Venue clients initialized successfully");
+
+      // Verify venue clients are actually initialized (not null)
+      if (!state.venueClients.polymarket) {
+        state.logger.error("FATAL: Polymarket client failed to initialize");
+        state.logger.error("  Ensure POLYMARKET_PRIVATE_KEY is set (API creds alone are insufficient)");
+        process.exit(1);
+      }
+      if (!state.venueClients.kalshi) {
+        state.logger.error("FATAL: Kalshi client failed to initialize");
+        state.logger.error("  Ensure KALSHI_API_KEY and KALSHI_PRIVATE_KEY are set");
+        process.exit(1);
+      }
+
+      // Test connectivity
+      state.logger.info("Testing venue connectivity...");
+
+      // Test Polymarket
+      if (state.venueClients.polymarket) {
+        const orders = await state.venueClients.polymarket.getOpenOrders();
+        state.logger.info(`  Polymarket: OK (${orders.length} open orders)`);
+      }
+
+      // Test Kalshi
+      if (state.venueClients.kalshi) {
+        const headers = await state.venueClients.kalshi.auth.getHeaders(
+          "GET",
+          "/trade-api/v2/portfolio/balance"
+        );
+        const res = await fetch(
+          `${config.kalshiApiHost}/trade-api/v2/portfolio/balance`,
+          { headers: headers as unknown as Record<string, string> }
+        );
+        if (!res.ok) {
+          throw new Error(`Kalshi auth failed: ${res.status}`);
+        }
+        state.logger.info("  Kalshi: OK");
+      }
+    } catch (error) {
+      state.logger.error(
+        `Failed to initialize venue clients: ${error instanceof Error ? error.message : String(error)}`
+      );
+      process.exit(1);
+    }
+  }
 
   // Create discovery (determines venues based on available API keys)
   const kalshiApiKeyId = process.env.KALSHI_API_KEY;
@@ -382,7 +558,7 @@ async function main(): Promise<void> {
   // Set up discovery event handler
   state.discovery.onEvent(handleDiscoveryEvent);
 
-  // Create coordinator
+  // Create coordinator with order cancellation callbacks for safe rollover
   state.coordinator = new MarketDataCoordinator({
     discovery: state.discovery,
     kalshiWsOptions: hasKalshiCreds
@@ -393,6 +569,7 @@ async function main(): Promise<void> {
         }
       : undefined,
     debug: config.logLevel === "debug",
+    orderCancellation: createOrderCancellationCallbacks(),
   });
 
   // Set up event handlers
@@ -413,6 +590,7 @@ async function main(): Promise<void> {
   // Start
   state.running = true;
   state.logger.startStatusInterval(state.statusIntervalMs);
+  state.logger.startMetricsInterval(180000); // 3-minute execution metrics
 
   const currentInterval = getIntervalKey();
   state.logger.info(`Current interval: ${formatIntervalKey(currentInterval)}`);

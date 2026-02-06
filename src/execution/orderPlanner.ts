@@ -134,11 +134,15 @@ export function buildOrderParams(
 /**
  * Build unwind order parameters (SELL instead of BUY).
  *
+ * Uses MARKET orders for emergency unwinds to guarantee exit:
+ * - Kalshi: type="market" executes at best available price (no price needed)
+ * - Polymarket: aggressive limit at $0.01 (minimum price) to ensure fill
+ *
  * @param leg - The leg to unwind
  * @param mapping - Market mapping
  * @param qty - Quantity to unwind
- * @param currentBidPrice - Current bid price for slippage adjustment
- * @param slippageBuffer - Slippage buffer to apply
+ * @param currentBidPrice - Current bid price (used for Polymarket fallback)
+ * @param slippageBuffer - Slippage buffer (unused for market orders)
  * @returns OrderParams for unwind order
  */
 export function buildUnwindOrderParams(
@@ -150,8 +154,10 @@ export function buildUnwindOrderParams(
 ): OrderParams {
   const marketId = getMarketId(leg, mapping);
 
-  // Price at which we try to unwind: bid minus slippage to ensure fill
-  const unwindPrice = Math.max(0.01, currentBidPrice - slippageBuffer);
+  // For unwinds, use market orders to guarantee exit
+  // Kalshi: type="market" needs no price (set to 0, ignored)
+  // Polymarket: use minimum price ($0.01) to ensure aggressive fill
+  const unwindPrice = leg.venue === "kalshi" ? 0 : 0.01;
 
   return {
     venue: leg.venue,
@@ -159,9 +165,44 @@ export function buildUnwindOrderParams(
     action: "sell", // Unwind means selling what we bought
     price: unwindPrice,
     qty,
-    timeInForce: "FOK",
+    timeInForce: "MARKET",
+    orderType: "market",
     marketId,
-    clientOrderId: generateClientOrderId(leg.venue, "A"), // Reuse "A" for unwind
+    clientOrderId: generateClientOrderId(leg.venue, "U"), // "U" for unwind
+  };
+}
+
+/**
+ * Build IOC/FOK limit sell params for a price ladder unwind step.
+ *
+ * - Kalshi: IOC (partial fills OK, fill what's available immediately)
+ * - Polymarket: FOK (all-or-nothing at the limit price)
+ *
+ * @param leg - The leg to unwind
+ * @param mapping - Market mapping
+ * @param qty - Quantity to sell
+ * @param sellPrice - Limit price for this ladder step (0-1 decimal)
+ * @returns OrderParams for a limit sell at the given price
+ */
+export function buildLadderUnwindParams(
+  leg: ArbLeg,
+  mapping: IntervalMapping,
+  qty: number,
+  sellPrice: number
+): OrderParams {
+  const marketId = getMarketId(leg, mapping);
+  const clampedPrice = Math.max(0.01, Math.min(0.99, sellPrice));
+
+  return {
+    venue: leg.venue,
+    side: leg.side,
+    action: "sell",
+    price: clampedPrice,
+    qty,
+    // Kalshi IOC allows partial fills; Polymarket FOK is all-or-nothing
+    timeInForce: leg.venue === "kalshi" ? "IOC" : "FOK",
+    marketId,
+    clientOrderId: generateClientOrderId(leg.venue, "U"),
   };
 }
 

@@ -26,6 +26,8 @@ export type ExecutionStatus =
   | "leg_a_filled"
   | "leg_b_submitting"
   | "leg_b_filled"
+  | "legs_submitting"
+  | "both_legs_failed"
   | "success"
   | "leg_a_failed"
   | "leg_b_failed"
@@ -47,8 +49,10 @@ export interface OrderParams {
   price: number;
   /** Quantity (number of contracts) */
   qty: number;
-  /** Time in force - always FOK for v0.1 */
-  timeInForce: "FOK";
+  /** Time in force - FOK for normal orders, MARKET for emergency unwinds */
+  timeInForce: "FOK" | "MARKET" | "IOC";
+  /** Order type - "limit" (default) or "market" (for emergency unwinds) */
+  orderType?: "limit" | "market";
   /** Market identifier (ticker for Kalshi, token ID for Polymarket) */
   marketId: string;
   /** Client-generated order ID for tracking */
@@ -198,6 +202,20 @@ export interface ExecutionContext {
 }
 
 /**
+ * Status of an order on a venue.
+ */
+export interface OrderStatusResult {
+  /** Raw status string from the venue */
+  status: string;
+  /** Whether the order has been filled */
+  filled: boolean;
+  /** Actual fill price (0-1 decimal), if filled */
+  fillPrice?: number;
+  /** Quantity filled */
+  fillQty?: number;
+}
+
+/**
  * Venue client interfaces for order operations.
  */
 export interface VenueClients {
@@ -207,6 +225,8 @@ export interface VenueClients {
   cancelOrder: (venue: Venue, orderId: string) => Promise<boolean>;
   /** Get current quote for a venue */
   getQuote: (venue: Venue) => NormalizedQuote | null;
+  /** Get the status of an order (for cancel-then-verify flow) */
+  getOrderStatus: (venue: Venue, orderId: string) => Promise<OrderStatusResult>;
 }
 
 /**
@@ -221,8 +241,31 @@ export function generateExecutionId(): string {
 /**
  * Generate a unique client order ID.
  */
-export function generateClientOrderId(venue: Venue, leg: "A" | "B"): string {
+export function generateClientOrderId(venue: Venue, leg: "A" | "B" | "U"): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 6);
   return `${venue}_${leg}_${timestamp}_${random}`;
+}
+
+/**
+ * Pending settlement for a completed box trade.
+ *
+ * Contracts settle at the END of the interval, not immediately.
+ * This tracks unrealized PnL until settlement.
+ */
+export interface PendingSettlement {
+  /** Unique execution ID */
+  executionId: string;
+  /** Interval key for this settlement */
+  intervalKey: IntervalKey;
+  /** Timestamp when interval ends and settlement occurs */
+  settlesAt: number;
+  /** Expected PnL at settlement ($1 - total cost) */
+  expectedPnl: number;
+  /** Actual cost paid for the box */
+  actualCost: number;
+  /** Quantity of contracts in the box */
+  qty: number;
+  /** When the box was completed */
+  completedAt: number;
 }

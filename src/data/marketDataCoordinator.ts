@@ -58,6 +58,16 @@ export type CoordinatorEvent =
 export type CoordinatorEventCallback = (event: CoordinatorEvent) => void;
 
 /**
+ * Callbacks for canceling orders on rollover.
+ */
+export interface OrderCancellationCallbacks {
+  /** Cancel all Kalshi orders for a market ticker. Returns number of orders canceled. */
+  cancelKalshiOrders?: (ticker: string) => Promise<number>;
+  /** Cancel all Polymarket orders for the given token IDs. */
+  cancelPolymarketOrders?: (upToken: string, downToken: string) => Promise<void>;
+}
+
+/**
  * Options for MarketDataCoordinator.
  */
 export interface MarketDataCoordinatorOptions {
@@ -71,6 +81,8 @@ export interface MarketDataCoordinatorOptions {
   debug?: boolean;
   /** Delay after rollover before reconnecting (default: 5000ms) */
   rolloverReconnectDelayMs?: number;
+  /** Callbacks for canceling orders on rollover */
+  orderCancellation?: OrderCancellationCallbacks;
 }
 
 /**
@@ -87,6 +99,7 @@ export class MarketDataCoordinator {
   private kalshiWs: KalshiWsClient | null = null;
   private debug: boolean;
   private rolloverReconnectDelayMs: number;
+  private orderCancellation: OrderCancellationCallbacks | undefined;
 
   private running = false;
   private currentInterval: IntervalKey | null = null;
@@ -117,6 +130,7 @@ export class MarketDataCoordinator {
     this.discovery = options.discovery;
     this.debug = options.debug || false;
     this.rolloverReconnectDelayMs = options.rolloverReconnectDelayMs ?? 5000;
+    this.orderCancellation = options.orderCancellation;
 
     // Initialize venue clients based on options
     const venues = this.discovery.getVenues();
@@ -419,10 +433,19 @@ export class MarketDataCoordinator {
       newInterval,
     });
 
+    // Step 0: Cancel all open orders for current interval (safety-critical)
+    await this.cancelAllOrdersForCurrentInterval();
+
     // Clear subscription state
     this.pendingSubscriptionInterval = null;
     this.pendingKalshiSubscription = null;
     this.pendingPolymarketSubscription = null;
+
+    // Save current market identifiers before clearing (needed for cancel-all)
+    const polyUpToken = this.currentPolyUpToken;
+    const polyDownToken = this.currentPolyDownToken;
+    const kalshiTicker = this.currentKalshiTicker;
+
     this.currentInterval = null;
     this.currentPolyUpToken = null;
     this.currentPolyDownToken = null;
@@ -672,6 +695,69 @@ export class MarketDataCoordinator {
     }
 
     await Promise.all(promises);
+  }
+
+  /**
+   * Cancel all open orders for the current interval.
+   * Called before rollover to ensure no stale orders remain.
+   */
+  private async cancelAllOrdersForCurrentInterval(): Promise<void> {
+    if (!this.orderCancellation) {
+      this.log("No order cancellation callbacks configured, skipping cancel-all");
+      return;
+    }
+
+    console.log("[MarketDataCoordinator] Canceling all orders for current interval...");
+
+    const cancelPromises: Promise<void>[] = [];
+
+    // Cancel Kalshi orders
+    if (this.orderCancellation.cancelKalshiOrders && this.currentKalshiTicker) {
+      const ticker = this.currentKalshiTicker;
+      cancelPromises.push(
+        this.orderCancellation.cancelKalshiOrders(ticker)
+          .then((count) => {
+            console.log(`[MarketDataCoordinator] Canceled ${count} Kalshi orders for ${ticker}`);
+          })
+          .catch((error) => {
+            console.error(`[MarketDataCoordinator] Failed to cancel Kalshi orders for ${ticker}:`, error);
+            this.emitEvent({
+              type: "ERROR",
+              venue: "kalshi",
+              error: error instanceof Error ? error : new Error(String(error)),
+              context: "cancel-all",
+            });
+          })
+      );
+    }
+
+    // Cancel Polymarket orders
+    if (
+      this.orderCancellation.cancelPolymarketOrders &&
+      this.currentPolyUpToken &&
+      this.currentPolyDownToken
+    ) {
+      const upToken = this.currentPolyUpToken;
+      const downToken = this.currentPolyDownToken;
+      cancelPromises.push(
+        this.orderCancellation.cancelPolymarketOrders(upToken, downToken)
+          .then(() => {
+            console.log(`[MarketDataCoordinator] Canceled Polymarket orders for tokens`);
+          })
+          .catch((error) => {
+            console.error(`[MarketDataCoordinator] Failed to cancel Polymarket orders:`, error);
+            this.emitEvent({
+              type: "ERROR",
+              venue: "polymarket",
+              error: error instanceof Error ? error : new Error(String(error)),
+              context: "cancel-all",
+            });
+          })
+      );
+    }
+
+    await Promise.all(cancelPromises);
+    console.log("[MarketDataCoordinator] Order cancellation complete");
   }
 
   private forwardQuote(event: QuoteUpdateEvent): void {

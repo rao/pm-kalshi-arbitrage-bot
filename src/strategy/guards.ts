@@ -5,7 +5,33 @@
  * All guards return { pass: true } or { pass: false, reason: string }.
  */
 
-import type { GuardResult, GuardContext } from "./types";
+import type { GuardResult, GuardContext, Venue } from "./types";
+import type { PositionSnapshot } from "../state/positionTracker";
+import { PRICE_BOUNDS } from "../config/riskParams";
+
+/**
+ * Check if a price is valid for a venue.
+ *
+ * Both venues require prices between 0.01 and 0.99 (1-99 cents).
+ */
+export function isValidVenuePrice(price: number, venue: Venue): boolean {
+  const bounds = PRICE_BOUNDS[venue];
+  return price >= bounds.min && price <= bounds.max;
+}
+
+/**
+ * Guard check for price validity.
+ */
+export function checkValidPrice(price: number, venue: Venue): GuardResult {
+  if (isValidVenuePrice(price, venue)) {
+    return { pass: true };
+  }
+  const bounds = PRICE_BOUNDS[venue];
+  return {
+    pass: false,
+    reason: `Invalid ${venue} price ${price.toFixed(4)}, must be ${bounds.min}-${bounds.max}`,
+  };
+}
 
 /**
  * Check if net edge meets minimum threshold.
@@ -95,6 +121,48 @@ export function checkNotional(
 }
 
 /**
+ * Check if open order count is within limits for a venue.
+ */
+export function checkOpenOrderLimit(
+  venue: string,
+  currentCount: number,
+  maxCount: number
+): GuardResult {
+  if (currentCount < maxCount) {
+    return { pass: true };
+  }
+  return {
+    pass: false,
+    reason: `${venue} at max open orders (${currentCount}/${maxCount})`,
+  };
+}
+
+/**
+ * Check if positions are balanced across venues (no unhedged directional exposure).
+ *
+ * For a properly hedged box trade, totalYes should equal totalNo across all venues.
+ * If they differ, the bot has unhedged directional exposure and should not trade.
+ *
+ * @param positions - Current position snapshot from position tracker
+ * @returns GuardResult - fails if positions are unbalanced
+ */
+export function checkPositionBalance(positions: PositionSnapshot): GuardResult {
+  const totalYes = positions.polymarket.yes + positions.kalshi.yes;
+  const totalNo = positions.polymarket.no + positions.kalshi.no;
+
+  if (totalYes === totalNo) {
+    return { pass: true };
+  }
+
+  return {
+    pass: false,
+    reason: `Position imbalance: totalYes=${totalYes}, totalNo=${totalNo} ` +
+      `(poly: yes=${positions.polymarket.yes} no=${positions.polymarket.no}, ` +
+      `kalshi: yes=${positions.kalshi.yes} no=${positions.kalshi.no})`,
+  };
+}
+
+/**
  * Run all guard checks.
  *
  * Returns the first failing guard result, or { pass: true } if all pass.
@@ -139,6 +207,31 @@ export function runAllGuards(context: GuardContext): GuardResult {
     context.estimatedCost
   );
   if (!notionalResult.pass) return notionalResult;
+
+  // Check open order limits (if provided)
+  if (
+    context.polymarketOpenOrders !== undefined &&
+    context.maxOpenOrdersPerVenue !== undefined
+  ) {
+    const polyOrderResult = checkOpenOrderLimit(
+      "Polymarket",
+      context.polymarketOpenOrders,
+      context.maxOpenOrdersPerVenue
+    );
+    if (!polyOrderResult.pass) return polyOrderResult;
+  }
+
+  if (
+    context.kalshiOpenOrders !== undefined &&
+    context.maxOpenOrdersPerVenue !== undefined
+  ) {
+    const kalshiOrderResult = checkOpenOrderLimit(
+      "Kalshi",
+      context.kalshiOpenOrders,
+      context.maxOpenOrdersPerVenue
+    );
+    if (!kalshiOrderResult.pass) return kalshiOrderResult;
+  }
 
   return { pass: true };
 }

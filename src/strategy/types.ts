@@ -39,14 +39,16 @@ export interface Opportunity {
   timestamp: number;
   /** The two legs of the box trade [yesLeg, noLeg] */
   legs: [ArbLeg, ArbLeg];
-  /** Total cost to acquire the box */
+  /** Total cost to acquire the box (per contract) */
   cost: number;
-  /** Gross edge before fees/slippage */
+  /** Gross edge before fees/slippage (per contract) */
   edgeGross: number;
-  /** Net edge after fees/slippage */
+  /** Net edge after fees/slippage (per contract) */
   edgeNet: number;
   /** Human-readable description of the opportunity */
   reason: string;
+  /** Quantity to trade (calculated based on Polymarket min order constraints) */
+  qty: number;
 }
 
 /**
@@ -84,6 +86,12 @@ export interface GuardContext {
   maxNotional: number;
   /** Estimated cost of this trade */
   estimatedCost: number;
+  /** Open order count for Polymarket (optional) */
+  polymarketOpenOrders?: number;
+  /** Open order count for Kalshi (optional) */
+  kalshiOpenOrders?: number;
+  /** Maximum open orders per venue (optional) */
+  maxOpenOrdersPerVenue?: number;
 }
 
 /**

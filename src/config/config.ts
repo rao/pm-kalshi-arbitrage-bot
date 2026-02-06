@@ -33,6 +33,10 @@ export interface Config {
   polymarketApiSecret?: string;
   /** Polymarket API passphrase (derived from L1 auth) */
   polymarketApiPassphrase?: string;
+  /** Polymarket API address (address L2 credentials are tied to) */
+  polymarketApiAddress?: string;
+  /** Polymarket signature type: 0=EOA, 1=POLY_PROXY, 2=POLY_GNOSIS_SAFE */
+  polymarketSignatureType?: number;
 }
 
 const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
@@ -40,6 +44,27 @@ type LogLevel = (typeof LOG_LEVELS)[number];
 
 function isLogLevel(value: string): value is LogLevel {
   return LOG_LEVELS.includes(value as LogLevel);
+}
+
+/**
+ * Parse signature type from environment variable.
+ *
+ * @param value - String value from env var (0, 1, or 2)
+ * @returns Signature type number, or undefined to use default
+ */
+function parseSignatureType(value: string | undefined): number | undefined {
+  if (value === undefined || value === "") {
+    return undefined; // Will use default in venue client
+  }
+  const parsed = parseInt(value, 10);
+  if (isNaN(parsed) || parsed < 0 || parsed > 2) {
+    console.warn(
+      `[CONFIG] Invalid POLYMARKET_SIGNATURE_TYPE "${value}". ` +
+      `Valid values: 0=EOA, 1=POLY_PROXY, 2=POLY_GNOSIS_SAFE. Using default.`
+    );
+    return undefined;
+  }
+  return parsed;
 }
 
 /**
@@ -59,9 +84,11 @@ function isLogLevel(value: string): value is LogLevel {
  * Polymarket credentials:
  * - POLYMARKET_PRIVATE_KEY: Signer private key (0x-prefixed hex) - for order signing
  * - POLYMARKET_FUNDER_ADDRESS or POLY_WALLET_ADDRESS: Funder/proxy wallet address
+ * - POLYMARKET_API_ADDRESS or POLY_API_ADDRESS or POLY_WALLET_ADDRESS: Address L2 credentials are tied to
  * - POLYMARKET_API_KEY or POLY_API_KEY: API key
  * - POLYMARKET_API_SECRET or POLY_SECRET: API secret
  * - POLYMARKET_API_PASSPHRASE or POLY_PASSPHRASE: API passphrase
+ * - POLYMARKET_SIGNATURE_TYPE or POLY_SIGNATURE_TYPE: Signature type (0=EOA, 1=POLY_PROXY, 2=POLY_GNOSIS_SAFE)
  */
 export function loadConfig(): Config {
   const gammaApiHost =
@@ -95,16 +122,32 @@ export function loadConfig(): Config {
       process.env.KALSHI_PRIVATE_KEY_PATH || process.env.KALSHI_PRIVATE_KEY,
 
     // Polymarket credentials
-    polymarketPrivateKey: process.env.POLYMARKET_PRIVATE_KEY,
-    // Accepts either POLYMARKET_FUNDER_ADDRESS or POLY_WALLET_ADDRESS
+    // Accepts POLYMARKET_PRIVATE_KEY or POLYMARKET_WALLET_PRIVATE_KEY
+    polymarketPrivateKey:
+      process.env.POLYMARKET_PRIVATE_KEY ||
+      process.env.POLYMARKET_WALLET_PRIVATE_KEY,
+    // Accepts POLYMARKET_FUNDER_ADDRESS, POLY_FUNDER_ADDRESS, or POLY_WALLET_ADDRESS
     polymarketFunderAddress:
-      process.env.POLYMARKET_FUNDER_ADDRESS || process.env.POLY_WALLET_ADDRESS,
+      process.env.POLYMARKET_FUNDER_ADDRESS ||
+      process.env.POLY_FUNDER_ADDRESS ||
+      process.env.POLY_WALLET_ADDRESS,
     // Accepts either POLYMARKET_API_KEY or POLY_API_KEY
     polymarketApiKey: process.env.POLYMARKET_API_KEY || process.env.POLY_API_KEY,
     polymarketApiSecret:
       process.env.POLYMARKET_API_SECRET || process.env.POLY_SECRET,
     polymarketApiPassphrase:
       process.env.POLYMARKET_API_PASSPHRASE || process.env.POLY_PASSPHRASE,
+    // Address for L2 API authentication (address credentials are tied to)
+    // Falls back to funder address if not set
+    polymarketApiAddress:
+      process.env.POLYMARKET_API_ADDRESS ||
+      process.env.POLY_API_ADDRESS ||
+      process.env.POLY_WALLET_ADDRESS,
+    // Signature type: 0=EOA, 1=POLY_PROXY, 2=POLY_GNOSIS_SAFE
+    // Defaults to 2 (POLY_GNOSIS_SAFE) as that's the most common for Polymarket users
+    polymarketSignatureType: parseSignatureType(
+      process.env.POLYMARKET_SIGNATURE_TYPE || process.env.POLY_SIGNATURE_TYPE
+    ),
   };
 }
 
@@ -118,25 +161,13 @@ export function hasKalshiCredentials(config: Config): boolean {
 /**
  * Check if Polymarket credentials are configured.
  *
- * Returns true if either:
- * 1. Full API credentials are provided (apiKey, secret, passphrase)
- * 2. Private key is provided (can derive credentials)
+ * Returns true only if private key path is available, as that's what
+ * initializeVenueClients() actually uses for initialization.
+ *
+ * Note: Full API credentials (apiKey/secret/passphrase) are NOT sufficient
+ * for the current initialization flow which requires the private key.
  */
 export function hasPolymarketCredentials(config: Config): boolean {
-  // Check for full API credentials
-  if (
-    config.polymarketApiKey &&
-    config.polymarketApiSecret &&
-    config.polymarketApiPassphrase &&
-    config.polymarketFunderAddress
-  ) {
-    return true;
-  }
-
-  // Check for derivable credentials
-  if (config.polymarketPrivateKey && config.polymarketFunderAddress) {
-    return true;
-  }
-
-  return false;
+  // Only private key path is supported for initialization
+  return !!(config.polymarketPrivateKey && config.polymarketFunderAddress);
 }

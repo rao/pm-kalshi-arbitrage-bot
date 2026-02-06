@@ -7,7 +7,9 @@
     "dev": "bun src/index.ts",
     "test": "bun test",
     "discover": "bun scripts/discover_markets.ts",
-    "discover:watch": "bun scripts/discover_markets.ts --watch"
+    "discover:watch": "bun scripts/discover_markets.ts --watch",
+    "setup:allowances": "bun scripts/setup_polymarket_allowances.ts",
+    "check:allowances": "bun scripts/check_polymarket_allowances.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -16,6 +18,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@polymarket/clob-client": "^5.2.1",
     "viem": "^2.45.1"
   }
 }

@@ -413,3 +413,26 @@ export function logBusyLockFailed(): void {
     `[${formatTimestamp()}] [GUARD] Busy lock failed: execution already in progress`
   );
 }
+
+/**
+ * Creates a throttled function that fires immediately on first call,
+ * then suppresses subsequent calls for `waitMs` milliseconds.
+ * Useful for rate-limiting log spam while still showing the first occurrence.
+ */
+function createThrottle<T extends (...args: any[]) => void>(
+  fn: T,
+  waitMs: number
+): T {
+  let lastCallTime = 0;
+  return ((...args: Parameters<T>) => {
+    const now = Date.now();
+    if (now - lastCallTime >= waitMs) {
+      lastCallTime = now;
+      fn(...args);
+    }
+  }) as T;
+}
+
+// Throttled versions of guard loggers (5 second cooldown between messages)
+export const logGuardFailedThrottled = createThrottle(logGuardFailed, 5000);
+export const logBusyLockFailedThrottled = createThrottle(logBusyLockFailed, 5000);

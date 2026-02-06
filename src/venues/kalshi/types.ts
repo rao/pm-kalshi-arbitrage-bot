@@ -298,3 +298,61 @@ export interface KalshiBatchCancelResponse {
     reduced_by: number;
   }>;
 }
+
+// ============================================================================
+// Fill Types
+// ============================================================================
+
+/**
+ * A single fill from the Kalshi fills API.
+ *
+ * A fill represents when an order is matched (partially or fully).
+ */
+export interface KalshiFill {
+  /** Unique fill ID */
+  fill_id: string;
+  /** Market ticker */
+  ticker: string;
+  /** Order ID this fill belongs to */
+  order_id: string;
+  /** Side: "yes" or "no" */
+  side: KalshiSide;
+  /** Action: "buy" or "sell" */
+  action: KalshiAction;
+  /** Number of contracts filled */
+  count: number;
+  /** Yes price in cents at which the fill executed */
+  yes_price: number;
+  /** No price in cents at which the fill executed */
+  no_price: number;
+  /** Whether this was a taker fill */
+  is_taker: boolean;
+  /** Timestamp of the fill (ISO 8601) */
+  created_time: string;
+}
+
+/**
+ * Response from getting fills.
+ */
+export interface KalshiGetFillsResponse {
+  fills: KalshiFill[];
+  cursor: string;
+}
+
+/**
+ * Options for querying fills.
+ */
+export interface KalshiGetFillsOptions {
+  /** Filter by market ticker */
+  ticker?: string;
+  /** Filter by order ID */
+  order_id?: string;
+  /** Filter items after this Unix timestamp */
+  min_ts?: number;
+  /** Filter items before this Unix timestamp */
+  max_ts?: number;
+  /** Number of results per page (1-200, default 100) */
+  limit?: number;
+  /** Pagination cursor */
+  cursor?: string;
+}

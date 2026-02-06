@@ -287,7 +287,8 @@ export class MarketDiscovery {
     const polyResult = results[0];
     const kalshiResult = results[1];
 
-    console.log("[MarketDiscovery] Discovery results:");
+    console.log(`[MarketDiscovery / SANITY ] Discovery results:`);
+    // console.log(`  Same Interval: ${parseInt(polyResult?.intervalKey ?? 1) === parseInt(kalshiResult?.intervalKey) ? '✅' : '❌'} | Slug=${polyResult?.mapping.slug ?? 'unknown(!)'} | ticker=${kalshiResult?.mapping.marketTicker ?? 'unknown(!)'}`)
     console.log("  Polymarket:", polyResult ?
       `interval=${intervalKeyToString(polyResult.intervalKey)}, slug=${polyResult.mapping.slug}` : "not found");
     console.log("  Kalshi:", kalshiResult ?

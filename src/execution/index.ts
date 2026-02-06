@@ -10,6 +10,7 @@ export type {
   ExecutionStatus,
   OrderParams,
   OrderResult,
+  OrderStatusResult,
   LegExecution,
   ExecutionRecord,
   UnwindRecord,
@@ -17,6 +18,7 @@ export type {
   ExecutionResult,
   ExecutionContext,
   VenueClients,
+  PendingSettlement,
 } from "./types";
 
 export { generateExecutionId, generateClientOrderId } from "./types";
@@ -46,6 +48,15 @@ export {
   getLastFailureTs,
   getExecutionState,
   resetAllState,
+  recordUnwindLoss,
+  getDailyUnwindLoss,
+  // Pending settlement management
+  addPendingSettlement,
+  getUnrealizedPnl,
+  getPendingSettlements,
+  getPendingSettlementsForInterval,
+  settlePending,
+  getSettlementStats,
 } from "./executionState";
 
 // Order planning
@@ -53,6 +64,7 @@ export {
   planLegOrder,
   buildOrderParams,
   buildUnwindOrderParams,
+  buildLadderUnwindParams,
   getCurrentBid,
   getCurrentAsk,
   validateOpportunityMapping,
@@ -70,3 +82,14 @@ export {
 
 // Main executor
 export { executeOpportunity } from "./executor";
+
+// Venue client factory for live trading
+export {
+  initializeVenueClients,
+  createLiveVenueClients,
+  getKalshiAuth,
+  getPolymarketClient,
+  cancelKalshiOrdersForMarket,
+  type InitializedClients,
+  type GetQuoteFn,
+} from "./venueClientFactory";

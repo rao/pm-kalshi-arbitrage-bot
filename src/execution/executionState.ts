@@ -9,7 +9,9 @@
  * - Total notional deployed
  */
 
-import type { ExecutionState, ExecutionRecord } from "./types";
+import type { ExecutionState, ExecutionRecord, PendingSettlement } from "./types";
+import type { IntervalKey } from "../time/interval";
+import { intervalKeyToString } from "../time/interval";
 import { RISK_PARAMS } from "../config/riskParams";
 
 /**
@@ -40,6 +42,17 @@ const state: ExecutionState = {
   killSwitchTriggered: false,
   totalNotional: 0,
 };
+
+/**
+ * Cumulative unwind losses for the current day (stored as positive number).
+ * Tracked separately from dailyRealizedPnl so we can show arb profits vs losses independently.
+ */
+let dailyUnwindLoss = 0;
+
+/**
+ * Pending settlements state - tracks unrealized PnL until interval ends.
+ */
+const pendingSettlements: Map<string, PendingSettlement> = new Map();
 
 /**
  * Attempt to acquire the busy lock for execution.
@@ -145,6 +158,7 @@ export function recordPnl(pnl: number): void {
   if (todayStart > state.dailyStartTs) {
     state.dailyRealizedPnl = 0;
     state.dailyStartTs = todayStart;
+    dailyUnwindLoss = 0;
     // Note: do NOT reset kill switch on day change - requires manual reset
   }
 
@@ -178,6 +192,36 @@ export function getDailyLoss(): number {
 }
 
 /**
+ * Record an unwind loss (separate from daily PnL for display purposes).
+ *
+ * @param loss - Positive number representing the loss amount
+ */
+export function recordUnwindLoss(loss: number): void {
+  // Handle day rollover
+  const now = Date.now();
+  const todayStart = getDayStart(now);
+  if (todayStart > state.dailyStartTs) {
+    dailyUnwindLoss = 0;
+  }
+
+  dailyUnwindLoss += loss;
+}
+
+/**
+ * Get cumulative unwind losses for the current day.
+ *
+ * @returns Positive number representing total unwind losses
+ */
+export function getDailyUnwindLoss(): number {
+  const now = Date.now();
+  const todayStart = getDayStart(now);
+  if (todayStart > state.dailyStartTs) {
+    dailyUnwindLoss = 0;
+  }
+  return dailyUnwindLoss;
+}
+
+/**
  * Trigger the kill switch - stops all trading.
  */
 export function triggerKillSwitch(): void {
@@ -206,6 +250,7 @@ export function resetKillSwitch(): void {
 export function resetDailyTracking(): void {
   state.dailyRealizedPnl = 0;
   state.dailyStartTs = getDayStart();
+  dailyUnwindLoss = 0;
 }
 
 /**
@@ -263,4 +308,104 @@ export function resetAllState(): void {
   state.dailyStartTs = getDayStart();
   state.killSwitchTriggered = false;
   state.totalNotional = 0;
+  dailyUnwindLoss = 0;
+  pendingSettlements.clear();
+}
+
+// === Pending Settlement Tracking ===
+
+/**
+ * Add a pending settlement for a completed box trade.
+ *
+ * The settlement is tracked until the interval ends and settles.
+ */
+export function addPendingSettlement(settlement: PendingSettlement): void {
+  pendingSettlements.set(settlement.executionId, settlement);
+}
+
+/**
+ * Get total unrealized PnL from pending settlements.
+ */
+export function getUnrealizedPnl(): number {
+  let total = 0;
+  for (const settlement of pendingSettlements.values()) {
+    total += settlement.expectedPnl;
+  }
+  return total;
+}
+
+/**
+ * Get all pending settlements.
+ */
+export function getPendingSettlements(): PendingSettlement[] {
+  return Array.from(pendingSettlements.values());
+}
+
+/**
+ * Get pending settlements for a specific interval.
+ */
+export function getPendingSettlementsForInterval(
+  intervalKey: IntervalKey
+): PendingSettlement[] {
+  const key = intervalKeyToString(intervalKey);
+  return Array.from(pendingSettlements.values()).filter(
+    (s) => intervalKeyToString(s.intervalKey) === key
+  );
+}
+
+/**
+ * Settle pending settlements for an interval.
+ *
+ * Called when an interval ends. Moves unrealized PnL to realized.
+ *
+ * @param intervalKey - The interval that just ended
+ * @returns Object with realized total and settled settlements
+ */
+export function settlePending(intervalKey: IntervalKey): {
+  realized: number;
+  settled: PendingSettlement[];
+} {
+  const key = intervalKeyToString(intervalKey);
+  const toSettle: PendingSettlement[] = [];
+  let realized = 0;
+
+  // Find all settlements for this interval
+  for (const [execId, settlement] of pendingSettlements.entries()) {
+    if (intervalKeyToString(settlement.intervalKey) === key) {
+      toSettle.push(settlement);
+      realized += settlement.expectedPnl;
+      pendingSettlements.delete(execId);
+    }
+  }
+
+  // Record the realized PnL
+  if (realized !== 0) {
+    recordPnl(realized);
+  }
+
+  return { realized, settled: toSettle };
+}
+
+/**
+ * Get settlement statistics.
+ */
+export function getSettlementStats(): {
+  pendingCount: number;
+  unrealizedPnl: number;
+  nextSettlement: number | null;
+} {
+  const settlements = Array.from(pendingSettlements.values());
+
+  let nextSettlement: number | null = null;
+  for (const s of settlements) {
+    if (nextSettlement === null || s.settlesAt < nextSettlement) {
+      nextSettlement = s.settlesAt;
+    }
+  }
+
+  return {
+    pendingCount: settlements.length,
+    unrealizedPnl: getUnrealizedPnl(),
+    nextSettlement,
+  };
 }

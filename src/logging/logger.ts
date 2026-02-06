@@ -11,6 +11,8 @@
 import type { NormalizedQuote, QuoteUpdateEvent } from "../normalization/types";
 import type { Opportunity } from "../strategy/types";
 import type { EdgeResult } from "../fees/edge";
+import { getMetricsSummary, getCounters } from "./metrics";
+import { getDailyPnl, getUnrealizedPnl, getDailyUnwindLoss } from "../execution/executionState";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -59,6 +61,12 @@ export interface Logger {
   /** Stop periodic status logging */
   stopStatusInterval(): void;
 
+  /** Start periodic execution metrics logging (separate from status) */
+  startMetricsInterval(intervalMs?: number): void;
+
+  /** Stop periodic execution metrics logging */
+  stopMetricsInterval(): void;
+
   /** Get current quote stats */
   getQuoteStats(): QuoteStats;
 
@@ -91,6 +99,7 @@ function formatQuote(venue: string, quote: NormalizedQuote | null): string {
 export function createLogger(level: LogLevel = "info"): Logger {
   const minLevel = LOG_LEVEL_VALUES[level];
   let statusIntervalId: ReturnType<typeof setInterval> | null = null;
+  let metricsIntervalId: ReturnType<typeof setInterval> | null = null;
   let lastComputedEdge: EdgeResult | null = null;
 
   const stats: QuoteStats = {
@@ -197,6 +206,18 @@ export function createLogger(level: LogLevel = "info"): Logger {
         const bestCost = Math.min(cost1, cost2);
         console.log(`  Best box cost: ${bestCost.toFixed(3)} (edge not computed)`);
       }
+
+      // P&L summary
+      const pending = getUnrealizedPnl();
+      const unwindLoss = getDailyUnwindLoss();
+      // settled = dailyPnl with unwind losses backed out (just settlement profits)
+      const settled = getDailyPnl() + unwindLoss;
+      const arbPnl = pending + settled;
+      console.log(
+        `  P&L: Arb=$${arbPnl.toFixed(2)} (pending=$${pending.toFixed(2)} + settled=$${settled.toFixed(2)}), ` +
+          `Losses=$${unwindLoss.toFixed(2)}`
+      );
+
       console.log("");
 
       // Reset stats for next period
@@ -214,6 +235,25 @@ export function createLogger(level: LogLevel = "info"): Logger {
       if (statusIntervalId) {
         clearInterval(statusIntervalId);
         statusIntervalId = null;
+      }
+    },
+
+    startMetricsInterval(intervalMs: number = 180000) {
+      if (metricsIntervalId) return;
+      metricsIntervalId = setInterval(() => {
+        const counters = getCounters();
+        if (counters.opportunitiesDetected > 0 || counters.executionsAttempted > 0) {
+          console.log("");
+          console.log(getMetricsSummary());
+          console.log("");
+        }
+      }, intervalMs);
+    },
+
+    stopMetricsInterval() {
+      if (metricsIntervalId) {
+        clearInterval(metricsIntervalId);
+        metricsIntervalId = null;
       }
     },
 

@@ -14,6 +14,8 @@ import type {
   KalshiGetOrdersResponse,
   KalshiGetOrdersOptions,
   KalshiBatchCancelResponse,
+  KalshiGetFillsResponse,
+  KalshiGetFillsOptions,
 } from "./types";
 
 /** Base URL for Kalshi API */
@@ -328,4 +330,45 @@ export async function cancelAllOrdersForMarket(
   }
 
   return totalCanceled;
+}
+
+/**
+ * Get fills for the authenticated user.
+ *
+ * Returns actual execution prices for orders, which may differ from
+ * the limit price specified in market orders.
+ *
+ * @param auth - Initialized KalshiAuth instance
+ * @param options - Query options for filtering fills
+ * @returns List of fills with actual execution prices
+ *
+ * @example
+ * ```ts
+ * // Get fills for a specific order
+ * const response = await getFills(auth, { order_id: "order-id-123" });
+ * const fill = response.fills[0];
+ * console.log(`Actual fill price: ${fill.yes_price} cents`);
+ * ```
+ */
+export async function getFills(
+  auth: KalshiAuth,
+  options: KalshiGetFillsOptions = {}
+): Promise<KalshiGetFillsResponse> {
+  const queryString = buildQueryString(options as Record<string, string | number | undefined>);
+  const path = `${API_PATH_PREFIX}/portfolio/fills${queryString}`;
+  const headers = await auth.getHeaders("GET", path);
+
+  const response = await fetch(`${KALSHI_API_BASE}${path}`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Kalshi getFills failed (${response.status}): ${errorText}`
+    );
+  }
+
+  return response.json() as Promise<KalshiGetFillsResponse>;
 }

@@ -35,3 +35,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 poly-kalshi-arb/
 polymarket-trading-bot/
+clob-client/
+
+logs/*.txt

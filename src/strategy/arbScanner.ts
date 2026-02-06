@@ -8,6 +8,8 @@
 import type { NormalizedQuote } from "../normalization/types";
 import { isValidQuote } from "../normalization/types";
 import { computeEdge } from "../fees/edge";
+import { isValidVenuePrice } from "./guards";
+import { calculateMinQuantityForPolymarket, RISK_PARAMS } from "../config/riskParams";
 import type {
   ScanContext,
   ScanResult,
@@ -138,6 +140,27 @@ export function scanForArbitrage(context: ScanContext): ScanResult {
   // Find best box configuration
   const box = findBestBox(polyQuote, kalshiQuote);
 
+  // Validate prices are within venue bounds
+  if (!isValidVenuePrice(box.yesAsk, box.yesVenue)) {
+    return {
+      opportunity: null,
+      reason: `Invalid ${box.yesVenue} YES price: ${box.yesAsk.toFixed(4)} (must be 0.01-0.99)`,
+      polyQuote,
+      kalshiQuote,
+      computedEdge: null,
+    };
+  }
+
+  if (!isValidVenuePrice(box.noAsk, box.noVenue)) {
+    return {
+      opportunity: null,
+      reason: `Invalid ${box.noVenue} NO price: ${box.noAsk.toFixed(4)} (must be 0.01-0.99)`,
+      polyQuote,
+      kalshiQuote,
+      computedEdge: null,
+    };
+  }
+
   // Compute edge
   const edgeResult = computeEdge(box.yesAsk, box.noAsk, feeBuffer, slippageBuffer);
 
@@ -157,6 +180,26 @@ export function scanForArbitrage(context: ScanContext): ScanResult {
     return {
       opportunity: null,
       reason: `Edge ${edgeResult.edgeNet.toFixed(4)} < min ${minEdgeNet.toFixed(4)}`,
+      polyQuote,
+      kalshiQuote,
+      computedEdge: edgeResult,
+    };
+  }
+
+  // Dynamic qty: maximize contracts based on orderbook depth
+  // Take bookDepthFraction (80%) of available book depth to guarantee fill (headroom for book movement)
+  const safeSize = Math.floor(Math.min(box.yesSize, box.noSize) * RISK_PARAMS.bookDepthFraction);
+  // Cap by hard maximum per trade
+  const qty = Math.min(safeSize, RISK_PARAMS.maxQtyPerTrade);
+
+  // Validate that qty meets Polymarket minimum order constraints
+  const polyPrice = box.yesVenue === "polymarket" ? box.yesAsk : box.noAsk;
+  const polyMinQty = calculateMinQuantityForPolymarket(polyPrice);
+
+  if (qty < polyMinQty) {
+    return {
+      opportunity: null,
+      reason: `Insufficient liquidity for Polymarket minimum: available=${qty}, required=${polyMinQty} (book: yes=${box.yesSize}, no=${box.noSize})`,
       polyQuote,
       kalshiQuote,
       computedEdge: edgeResult,
@@ -186,7 +229,8 @@ export function scanForArbitrage(context: ScanContext): ScanResult {
     edgeGross: edgeResult.edgeGross,
     edgeNet: edgeResult.edgeNet,
     reason: `Buy ${box.yesVenue.toUpperCase()} YES @ ${box.yesAsk.toFixed(3)}, ` +
-      `Buy ${box.noVenue.toUpperCase()} NO @ ${box.noAsk.toFixed(3)}`,
+      `Buy ${box.noVenue.toUpperCase()} NO @ ${box.noAsk.toFixed(3)} (qty=${qty})`,
+    qty,
   };
 
   return {

@@ -1,13 +1,17 @@
 /**
  * File-based execution logging.
  *
- * Appends structured log entries to daily log files:
- * logs/execution_YYYY-MM-DD.txt
+ * Creates a unique log file per run:
+ * logs/execution_YYYY-MM-DD_HH-MM-SS.txt
  *
- * Uses Bun.file() for file operations.
+ * Uses Node.js appendFile for O(1) append operations.
  */
 
-import { join } from "path";
+import { join, dirname } from "path";
+import { appendFile, mkdir } from "node:fs/promises";
+
+// Capture startup time once (used for unique log filename per run)
+const STARTUP_TS = new Date();
 
 /**
  * Log entry types for execution events.
@@ -39,13 +43,17 @@ export interface ExecutionLogEntry {
 }
 
 /**
- * Get the current log file path based on date.
+ * Get the log file path for this run (unique per startup).
  */
-export function getLogFilePath(date: Date = new Date()): string {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  const filename = `execution_${year}-${month}-${day}.txt`;
+export function getLogFilePath(): string {
+  const year = STARTUP_TS.getUTCFullYear();
+  const month = String(STARTUP_TS.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(STARTUP_TS.getUTCDate()).padStart(2, "0");
+  const hours = String(STARTUP_TS.getUTCHours()).padStart(2, "0");
+  const minutes = String(STARTUP_TS.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(STARTUP_TS.getUTCSeconds()).padStart(2, "0");
+
+  const filename = `execution_${year}-${month}-${day}_${hours}-${minutes}-${seconds}.txt`;
 
   // Logs directory is at project root
   return join(process.cwd(), "logs", filename);
@@ -62,7 +70,8 @@ function formatLogEntry(entry: ExecutionLogEntry): string {
 /**
  * Append a log entry to the execution log file.
  *
- * Creates the file if it doesn't exist.
+ * Creates the directory and file if they don't exist.
+ * Uses O(1) append operation instead of read-all/write-all.
  */
 export async function appendToExecutionLog(
   entry: ExecutionLogEntry
@@ -71,20 +80,10 @@ export async function appendToExecutionLog(
   const line = formatLogEntry(entry);
 
   try {
-    // Use Bun.file().writer() for appending
-    const file = Bun.file(filePath);
-    const writer = file.writer();
-
-    // Check if file exists and read existing content
-    if (await file.exists()) {
-      // Read existing content
-      const existingContent = await file.text();
-      // Write existing + new
-      await Bun.write(filePath, existingContent + line);
-    } else {
-      // Create new file with just this entry
-      await Bun.write(filePath, line);
-    }
+    // Ensure logs directory exists
+    await mkdir(dirname(filePath), { recursive: true });
+    // Append to file (creates if doesn't exist)
+    await appendFile(filePath, line, { encoding: "utf-8" });
   } catch (error) {
     // Log to console if file write fails
     console.error(`[FILE_LOGGER] Failed to write to ${filePath}:`, error);
@@ -267,4 +266,104 @@ export async function logStateToFile(data: {
   killSwitchTriggered: boolean;
 }): Promise<void> {
   await logEntry("STATE", data);
+}
+
+// === Buffered writes for high-frequency logging ===
+
+/** Maximum entries to buffer before auto-flush */
+const MAX_BUFFER_SIZE = 100;
+/** Maximum time before auto-flush (ms) */
+const MAX_BUFFER_AGE_MS = 1000;
+
+/** Buffer state for batched writes */
+interface BufferState {
+  entries: string[];
+  firstEntryTs: number | null;
+  flushTimer: ReturnType<typeof setTimeout> | null;
+}
+
+const bufferState: BufferState = {
+  entries: [],
+  firstEntryTs: null,
+  flushTimer: null,
+};
+
+/**
+ * Flush the buffer to disk.
+ */
+async function flushBufferInternal(): Promise<void> {
+  if (bufferState.entries.length === 0) {
+    return;
+  }
+
+  // Clear timer
+  if (bufferState.flushTimer) {
+    clearTimeout(bufferState.flushTimer);
+    bufferState.flushTimer = null;
+  }
+
+  // Grab and clear entries
+  const entries = bufferState.entries;
+  bufferState.entries = [];
+  bufferState.firstEntryTs = null;
+
+  // Write all entries at once
+  const filePath = getLogFilePath();
+  const content = entries.join("");
+
+  try {
+    await mkdir(dirname(filePath), { recursive: true });
+    await appendFile(filePath, content, { encoding: "utf-8" });
+  } catch (error) {
+    console.error(`[FILE_LOGGER] Failed to flush buffer to ${filePath}:`, error);
+  }
+}
+
+/**
+ * Add an entry to the buffer.
+ * Flushes when buffer is full or after MAX_BUFFER_AGE_MS.
+ */
+export async function appendToExecutionLogBuffered(
+  entry: ExecutionLogEntry
+): Promise<void> {
+  const line = formatLogEntry(entry);
+  bufferState.entries.push(line);
+
+  // Track first entry time
+  if (bufferState.firstEntryTs === null) {
+    bufferState.firstEntryTs = Date.now();
+  }
+
+  // Flush if buffer full
+  if (bufferState.entries.length >= MAX_BUFFER_SIZE) {
+    await flushBufferInternal();
+    return;
+  }
+
+  // Set up timer for age-based flush if not already set
+  if (!bufferState.flushTimer) {
+    bufferState.flushTimer = setTimeout(() => {
+      flushBufferInternal().catch((error) => {
+        console.error("[FILE_LOGGER] Timer flush failed:", error);
+      });
+    }, MAX_BUFFER_AGE_MS);
+  }
+}
+
+/**
+ * Flush any pending buffered entries and close.
+ * Call this during graceful shutdown.
+ */
+export async function flushAndClose(): Promise<void> {
+  await flushBufferInternal();
+}
+
+/**
+ * Get buffer statistics (for monitoring).
+ */
+export function getBufferStats(): { count: number; ageMs: number | null } {
+  return {
+    count: bufferState.entries.length,
+    ageMs: bufferState.firstEntryTs ? Date.now() - bufferState.firstEntryTs : null,
+  };
 }
