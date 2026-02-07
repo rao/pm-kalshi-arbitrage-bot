@@ -205,7 +205,6 @@ export class VolatilityExitManager {
       this.deps.logger.debug("[VOL-EXIT] Execution busy, deferring trigger");
       return;
     }
-    if (isKillSwitchTriggered()) return;
     if (isLiquidationInProgress()) return;
 
     // Check for stale price data

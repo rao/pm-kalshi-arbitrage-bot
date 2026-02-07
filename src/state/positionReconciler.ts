@@ -498,11 +498,6 @@ export async function reconcileTick(options: PositionReconcilerOptions): Promise
     );
 
     // 5. Guard checks before corrective action
-    if (isKillSwitchTriggered()) {
-      logger.info("[RECONCILER] Kill switch active, logging only (no corrective action)");
-      return;
-    }
-
     if (isExecutionBusy()) {
       logger.info("[RECONCILER] Execution busy, deferring corrective action to next tick");
       return;
@@ -516,6 +511,12 @@ export async function reconcileTick(options: PositionReconcilerOptions): Promise
     // 6. Plan corrective action
     const action = planCorrectiveAction(options, mapping);
     if (!action) {
+      return;
+    }
+
+    // Kill switch blocks corrective BUYS but allows unwind SELLS
+    if (isKillSwitchTriggered() && action.type === "complete") {
+      logger.info("[RECONCILER] Kill switch active, blocking corrective BUY (but would allow unwind sells)");
       return;
     }
 
