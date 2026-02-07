@@ -231,6 +231,8 @@ export interface VenueClients {
   getOrderStatus: (venue: Venue, orderId: string) => Promise<OrderStatusResult>;
   /** Get actual token balance for a Polymarket position (for sell qty validation) */
   getTokenBalance?: (venue: Venue, tokenId: string) => Promise<number>;
+  /** Pre-compute auth/signatures for an upcoming order (latency optimization) */
+  prepareOrder?: (params: OrderParams) => void;
 }
 
 /**

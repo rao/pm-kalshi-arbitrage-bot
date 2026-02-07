@@ -150,13 +150,6 @@ export class PolymarketClient {
     const client = this.getClient();
 
     try {
-      console.log(`[POLYMARKET] Submitting FOK order:`, JSON.stringify({
-        tokenId: params.tokenId.substring(0, 20) + "...",
-        price: params.price,
-        size: params.size,
-        side: params.side,
-      }));
-
       // Use library's createAndPostOrder - matches working test-round-trip.ts
       const response = await client.createAndPostOrder(
         {
@@ -168,8 +161,6 @@ export class PolymarketClient {
         { tickSize: "0.01", negRisk: false },
         OrderType.FOK
       );
-
-      console.log(`[POLYMARKET] Response:`, JSON.stringify(response));
 
       return {
         success: response.success === true,
@@ -210,13 +201,6 @@ export class PolymarketClient {
     const client = this.getClient();
 
     try {
-      console.log(`[POLYMARKET] Submitting FAK order:`, JSON.stringify({
-        tokenId: params.tokenId.substring(0, 20) + "...",
-        price: params.price,
-        amount: params.amount,
-        side: params.side,
-      }));
-
       const response = await client.createAndPostMarketOrder(
         {
           tokenID: params.tokenId,
@@ -227,8 +211,6 @@ export class PolymarketClient {
         { tickSize: "0.01", negRisk: false },
         OrderType.FAK
       );
-
-      console.log(`[POLYMARKET] FAK Response:`, JSON.stringify(response));
 
       return {
         success: response.success === true,
