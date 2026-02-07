@@ -166,6 +166,14 @@ async function attemptExecution(opportunity: Opportunity): Promise<void> {
   try {
     const result = await executeOpportunity(context, venueClients);
 
+    // 7b. After successful execution, clear stale quotes and pause
+    // This prevents double execution on queued WS messages that still show pre-fill liquidity
+    if (result.success) {
+      state.quoteCache.polymarket = null;
+      state.quoteCache.kalshi = null;
+      await new Promise(r => setTimeout(r, RISK_PARAMS.cooldownMsAfterSuccess));
+    }
+
     // 8. Handle result
     if (result.shouldEnterCooldown) {
       enterCooldown();

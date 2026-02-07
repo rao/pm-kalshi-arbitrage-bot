@@ -103,7 +103,7 @@ export async function unwindLeg(
           "polymarket",
           filledLeg.params.marketId
         );
-        if (actualBalance > 0) {
+        if (actualBalance >= remainingQty * 0.5 || actualBalance >= 1.0) {
           if (actualBalance < remainingQty) {
             console.warn(
               `[UNWIND] On-chain balance (${actualBalance.toFixed(4)}) < CLOB fill (${totalQty}). Adjusting sell qty.`

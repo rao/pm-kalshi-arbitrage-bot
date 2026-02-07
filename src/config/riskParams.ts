@@ -24,6 +24,8 @@ export const RISK_PARAMS = {
   maxUnhedgedTimeMs: 1500,
   /** Cooldown period after a failed trade (ms) */
   cooldownMsAfterFailure: 3000,
+  /** Cooldown after a successful trade to drain stale WS messages (ms) */
+  cooldownMsAfterSuccess: 1000,
   /** Maximum daily loss before kill switch triggers ($20.00) */
   maxDailyLoss: 20.00,
   /** Maximum open orders per venue */

@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "live": "DRY_RUN=false bun src/index.ts",
     "dev": "bun src/index.ts",
     "test": "bun test",
     "discover": "bun scripts/discover_markets.ts",

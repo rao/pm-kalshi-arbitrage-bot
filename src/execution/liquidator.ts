@@ -176,7 +176,25 @@ async function liquidatePosition(
   let lastError = "";
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const remaining = qty - soldQty;
+    // Safety valve: never sell more than 110% of the original excess
+    if (soldQty >= qty * 1.1) {
+      logger.warn(`[LIQUIDATOR] Absolute sold cap reached (${soldQty.toFixed(2)} >= ${(qty * 1.1).toFixed(2)}). Stopping.`);
+      break;
+    }
+
+    // Re-derive excess from position tracker (reflects previous recordFill calls)
+    const currentPositions = getPositions();
+    const currentTotalYes = currentPositions.polymarket.yes + currentPositions.kalshi.yes;
+    const currentTotalNo = currentPositions.polymarket.no + currentPositions.kalshi.no;
+    const currentExcess = side === "yes"
+      ? currentTotalYes - currentTotalNo
+      : currentTotalNo - currentTotalYes;
+    if (currentExcess <= 0.5) {
+      logger.info(`[LIQUIDATOR] Excess resolved (${currentExcess.toFixed(2)}). Done.`);
+      break;
+    }
+
+    const remaining = Math.min(currentExcess, qty - soldQty);
     if (remaining <= 0) break;
 
     // Exponential backoff: 5s, 10s, 15s, 20s, 25s, 30s, 30s, 30s, 30s, 30s
@@ -218,39 +236,9 @@ async function liquidatePosition(
       }
 
       if (fillQty > 0) {
-        // For Polymarket, verify the sell actually executed on-chain.
-        // CLOB can report "matched" while the on-chain tx fails/reverts.
-        if (venue === "polymarket" && clients.polymarket) {
-          try {
-            await new Promise((r) => setTimeout(r, 2000)); // wait for block confirmation
-            const postSellBalance = await clients.polymarket.getConditionalTokenBalance(marketId);
-            const expectedDecrease = fillQty;
-            const actualDecrease = adjustedRemaining - postSellBalance;
-
-            if (actualDecrease < expectedDecrease * 0.5) {
-              logger.warn(
-                `[LIQUIDATOR] Post-sell verification FAILED: balance went from ${adjustedRemaining.toFixed(2)} to ${postSellBalance.toFixed(2)} ` +
-                `(decrease=${actualDecrease.toFixed(2)}, expected=${expectedDecrease.toFixed(2)}). CLOB reported success but on-chain sell did not execute.`
-              );
-              fillQty = Math.max(0, Math.floor(actualDecrease));
-            } else {
-              logger.info(
-                `[LIQUIDATOR] Post-sell verification OK: balance ${adjustedRemaining.toFixed(2)} → ${postSellBalance.toFixed(2)}`
-              );
-            }
-          } catch (e) {
-            logger.warn(`[LIQUIDATOR] Could not verify post-sell balance, trusting CLOB response`);
-          }
-        }
-
-        if (fillQty > 0) {
-          soldQty += fillQty;
-          // Record the sell in position tracker
-          recordFill(venue, side, "sell", fillQty, 0.01, getIntervalKey(), `liq_${Date.now()}`, marketId);
-          logger.info(`[LIQUIDATOR] Sold ${fillQty} ${venue} ${side}. Total sold: ${soldQty}/${qty}`);
-        } else {
-          logger.warn(`[LIQUIDATOR] Sell not confirmed on-chain, will retry on next attempt`);
-        }
+        soldQty += fillQty;
+        recordFill(venue, side, "sell", fillQty, 0.01, getIntervalKey(), `liq_${Date.now()}`, marketId);
+        logger.info(`[LIQUIDATOR] Sold ${fillQty} ${venue} ${side}. Total sold: ${soldQty}/${qty}`);
       } else {
         logger.warn(`[LIQUIDATOR] No fill on attempt ${attempt} for ${venue} ${side}`);
       }
