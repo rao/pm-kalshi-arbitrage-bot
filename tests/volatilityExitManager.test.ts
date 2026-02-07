@@ -1,9 +1,19 @@
 import { test, expect, describe, beforeEach, mock } from "bun:test";
+
+// Mock kalshi createOrder BEFORE importing volatilityExitManager
+const mockKalshiCreateOrder = mock(async () => ({
+  order: { count: 5, remaining_count: 0 },
+}));
+
+mock.module("../src/venues/kalshi/orders", () => ({
+  createOrder: mockKalshiCreateOrder,
+}));
+
 import {
   VolatilityExitManager,
   type VolatilityExitDeps,
 } from "../src/execution/volatilityExitManager";
-import { resetStore, setReferencePrice } from "../src/data/btcPriceStore";
+import { resetStore, setReferencePrice, recordPrice } from "../src/data/btcPriceStore";
 import {
   resetPositionTracker,
   recordFill,
@@ -96,6 +106,10 @@ describe("VolatilityExitManager", () => {
     resetStore();
     resetPositionTracker();
     resetAllState();
+    // Reset Kalshi mock to default (successful fill)
+    mockKalshiCreateOrder.mockImplementation(async () => ({
+      order: { count: 5, remaining_count: 0 },
+    }));
   });
 
   describe("initial state", () => {
@@ -243,6 +257,261 @@ describe("VolatilityExitManager", () => {
       manager.stop();
       expect(manager.getState()).toBe("IDLE");
       expect(manager.isActive()).toBe(false);
+    });
+  });
+
+  describe("sell failure handling", () => {
+    /**
+     * Helper: set up manager in MONITORING state with volatile BTC data,
+     * positions, and dryRun=false. Returns manager + captured logs.
+     *
+     * Uses (manager as any) to force MONITORING state deterministically,
+     * avoiding time-dependent IDLE→MONITORING transition.
+     */
+    function setupVolatileManagerWithPositions(
+      overrides: Partial<VolatilityExitDeps> = {}
+    ) {
+      const intervalKey = makeCurrentIntervalKey();
+      const mapping = makeMapping(intervalKey);
+
+      // Record positions on both venues
+      recordFill("polymarket", "yes", "buy", 5, 0.40, intervalKey, "fill1", "up-token-123");
+      recordFill("kalshi", "no", "buy", 5, 0.40, intervalKey, "fill2", "KXBTC-100000");
+
+      // Set up volatile BTC data: ref=100000, oscillate to get crossings>=2, range>=100
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);    // above
+      recordPrice(99940, now + 1); // below — crossing 1
+      recordPrice(100050, now + 2); // above — crossing 2
+      // range = 100060 - 99940 = 120 >= 100 threshold
+
+      const logs: string[] = [];
+      const deps = createMockDeps({
+        logger: {
+          info: (msg: string) => logs.push(msg),
+          debug: () => {},
+          warn: (msg: string) => logs.push(`WARN: ${msg}`),
+          error: (msg: string) => logs.push(`ERROR: ${msg}`),
+        } as any,
+        getCurrentMapping: () => mapping,
+        dryRun: false,
+        ...overrides,
+      });
+
+      const manager = new VolatilityExitManager(deps);
+
+      // Force into MONITORING state (bypass time-dependent transition)
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      return { manager, logs, intervalKey };
+    }
+
+    test("first target fails → second target attempted (Fix 1)", async () => {
+      // Kalshi createOrder throws insufficient_balance
+      mockKalshiCreateOrder.mockImplementation(async () => {
+        throw new Error("insufficient_balance: no contracts to sell");
+      });
+
+      const mockPolyClient = {
+        getConditionalTokenBalance: async () => 5,
+        placeFakOrder: async () => ({
+          success: true,
+          takingAmount: "2.50",
+          makingAmount: "5",
+        }),
+      };
+
+      const { manager, logs } = setupVolatileManagerWithPositions({
+        venueClients: {
+          polymarket: mockPolyClient as any,
+          kalshi: { auth: { token: "t", keyId: "k" } } as any,
+        },
+        getQuote: (venue) => {
+          // Kalshi NO has higher profitability → tried first
+          if (venue === "kalshi") return makeQuote(0.55, 0.60);
+          // Polymarket YES has lower profitability → tried second
+          return makeQuote(0.55, 0.50);
+        },
+      });
+
+      // Trigger via BTC price update (state is MONITORING, conditions are met)
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Kalshi should have failed, Polymarket should have been attempted
+      const attemptLogs = logs.filter((l) => l.includes("Attempting sell"));
+      expect(attemptLogs.length).toBeGreaterThanOrEqual(2);
+
+      // Polymarket sell should have succeeded (mock returns success)
+      const completeLogs = logs.filter((l) => l.includes("First sell complete"));
+      expect(completeLogs.length).toBe(1);
+
+      // Should be in DONE (single remaining position after Kalshi failed)
+      expect(manager.getState()).toBe("DONE");
+    });
+
+    test("all targets fail → returns to MONITORING with cooldown (Fix 1 + Fix 2)", async () => {
+      // Both venues fail
+      mockKalshiCreateOrder.mockImplementation(async () => {
+        throw new Error("insufficient_balance: no position");
+      });
+
+      const mockPolyClient = {
+        getConditionalTokenBalance: async () => 0, // triggers insufficient_balance throw
+      };
+
+      const { manager, logs } = setupVolatileManagerWithPositions({
+        venueClients: {
+          polymarket: mockPolyClient as any,
+          kalshi: { auth: { token: "t", keyId: "k" } } as any,
+        },
+      });
+
+      // First trigger — all targets fail
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      expect(manager.getState()).toBe("MONITORING");
+      expect(logs.some((l) => l.includes("All sell targets failed"))).toBe(true);
+
+      // Verify cooldown: immediate re-trigger should be suppressed
+      const logsBefore = logs.length;
+      await manager.onBtcPriceUpdate(makeUpdate(100055));
+
+      // Should NOT see another "TRIGGERED" log (cooldown active)
+      const triggeredAfter = logs.slice(logsBefore).filter((l) => l.includes("TRIGGERED"));
+      expect(triggeredAfter.length).toBe(0);
+
+      // State should still be MONITORING (not re-entered selling)
+      expect(manager.getState()).toBe("MONITORING");
+    });
+
+    test("cooldown expires and allows re-trigger (Fix 2)", async () => {
+      mockKalshiCreateOrder.mockImplementation(async () => {
+        throw new Error("insufficient_balance: no position");
+      });
+
+      const mockPolyClient = {
+        getConditionalTokenBalance: async () => 0,
+      };
+
+      const { manager, logs } = setupVolatileManagerWithPositions({
+        venueClients: {
+          polymarket: mockPolyClient as any,
+          kalshi: { auth: { token: "t", keyId: "k" } } as any,
+        },
+      });
+
+      // First trigger — all fail
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+      expect(manager.getState()).toBe("MONITORING");
+
+      // Fake the cooldown having expired
+      (manager as any).lastFailedTriggerTs = Date.now() - 5000;
+
+      const logsBefore = logs.length;
+      await manager.onBtcPriceUpdate(makeUpdate(100055));
+
+      // Should see another TRIGGERED log (cooldown expired)
+      const triggeredAfter = logs.slice(logsBefore).filter((l) => l.includes("TRIGGERED"));
+      expect(triggeredAfter.length).toBe(1);
+    });
+
+    test("permanent failure marks side as failed (Fix 3)", async () => {
+      mockKalshiCreateOrder.mockImplementation(async () => {
+        throw new Error("insufficient_balance: nothing to sell");
+      });
+
+      const mockPolyClient = {
+        getConditionalTokenBalance: async () => 0, // will throw insufficient_balance
+      };
+
+      const { manager, logs } = setupVolatileManagerWithPositions({
+        venueClients: {
+          polymarket: mockPolyClient as any,
+          kalshi: { auth: { token: "t", keyId: "k" } } as any,
+        },
+      });
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Check that failedSides was populated
+      const failedSides = (manager as any).failedSides as Set<string>;
+      expect(failedSides.size).toBeGreaterThan(0);
+
+      // Should contain at least one of the sides that had insufficient_balance
+      const hasMarkedSide =
+        failedSides.has("kalshi_no") || failedSides.has("polymarket_yes");
+      expect(hasMarkedSide).toBe(true);
+
+      // Verify the permanently-marked log was emitted
+      expect(logs.some((l) => l.includes("Permanently marking"))).toBe(true);
+    });
+
+    test("failedSides excluded from buildSellTargets on re-trigger (Fix 3)", async () => {
+      let kalshiCallCount = 0;
+      mockKalshiCreateOrder.mockImplementation(async () => {
+        kalshiCallCount++;
+        throw new Error("insufficient_balance: nothing to sell");
+      });
+
+      const mockPolyClient = {
+        getConditionalTokenBalance: async () => 0,
+      };
+
+      const { manager, logs } = setupVolatileManagerWithPositions({
+        venueClients: {
+          polymarket: mockPolyClient as any,
+          kalshi: { auth: { token: "t", keyId: "k" } } as any,
+        },
+      });
+
+      // First trigger — both fail, both marked as permanent
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+      expect(manager.getState()).toBe("MONITORING");
+
+      // Expire cooldown
+      (manager as any).lastFailedTriggerTs = Date.now() - 5000;
+      const kalshiCallsBefore = kalshiCallCount;
+
+      // Second trigger — failedSides should exclude both, so no targets found
+      await manager.onBtcPriceUpdate(makeUpdate(100055));
+
+      // buildSellTargets should return empty (both sides failed) → goes to IDLE
+      // No new sell attempts should have been made on Kalshi
+      expect(kalshiCallCount).toBe(kalshiCallsBefore);
+
+      // Should end up in IDLE (no sellable positions) or MONITORING
+      expect(["IDLE", "MONITORING"]).toContain(manager.getState());
+    });
+
+    test("failedSides reset on resetForInterval (Fix 3)", async () => {
+      const manager = new VolatilityExitManager(createMockDeps());
+
+      // Manually add failed sides
+      (manager as any).failedSides.add("kalshi_yes");
+      (manager as any).failedSides.add("polymarket_no");
+      (manager as any).lastFailedTriggerTs = Date.now();
+
+      expect((manager as any).failedSides.size).toBe(2);
+      expect((manager as any).lastFailedTriggerTs).not.toBeNull();
+
+      manager.resetForInterval();
+
+      expect((manager as any).failedSides.size).toBe(0);
+      expect((manager as any).lastFailedTriggerTs).toBeNull();
+    });
+
+    test("failedSides reset on stop (Fix 3)", () => {
+      const manager = new VolatilityExitManager(createMockDeps());
+
+      (manager as any).failedSides.add("kalshi_yes");
+      (manager as any).lastFailedTriggerTs = Date.now();
+
+      manager.stop();
+
+      expect((manager as any).failedSides.size).toBe(0);
+      expect((manager as any).lastFailedTriggerTs).toBeNull();
     });
   });
 });

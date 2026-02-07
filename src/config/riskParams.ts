@@ -88,6 +88,8 @@ export const RISK_PARAMS = {
   volatilityHaltWindowMs: 60000,
   /** Sell price offset below bid (1 tick) */
   volatilityExitSellPriceOffset: 0.01,
+  /** Cooldown after all vol-exit sell targets fail before re-triggering (ms) */
+  volatilityExitFailedTriggerCooldownMs: 3000,
 } as const;
 
 export type RiskParams = typeof RISK_PARAMS;
