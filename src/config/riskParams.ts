@@ -9,9 +9,9 @@
 
 export const RISK_PARAMS = {
   /** Maximum total notional across both venues */
-  maxNotional: 200.0,
+  maxNotional: 416.0,
   /** Maximum notional per venue */
-  maxNotionalPerVenue: 100.0,
+  maxNotionalPerVenue: 208.0,
   /** Number of contracts per trade leg */
   qtyPerTrade: 1,
   /** Minimum net edge after fees/slippage required to trade ($0.04) */
@@ -33,7 +33,7 @@ export const RISK_PARAMS = {
   /** Maximum contracts per trade (hard cap for dynamic sizing) */
   maxQtyPerTrade: 25,
   /** Fraction of available book depth to use (safety buffer for book movement) */
-  bookDepthFraction: 0.80,
+  bookDepthFraction: 0.65,
   /** Number of price ladder steps before market fallback during unwind */
   unwindLadderSteps: 3,
   /** Price decrement per ladder step (in decimal, $0.01 = 1 cent) */
