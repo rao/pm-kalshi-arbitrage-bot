@@ -78,6 +78,8 @@ export class VolatilityExitManager {
   private secondSellStartTs: number | null = null;
   private pendingSecondTarget: SellTarget | null = null;
   private firstSoldQty = 0;
+  private lastFailedTriggerTs: number | null = null;
+  private failedSides: Set<string> = new Set();
 
   constructor(deps: VolatilityExitDeps) {
     this.deps = deps;
@@ -167,6 +169,8 @@ export class VolatilityExitManager {
     this.secondSellStartTs = null;
     this.pendingSecondTarget = null;
     this.firstSoldQty = 0;
+    this.lastFailedTriggerTs = null;
+    this.failedSides.clear();
     resetPriceStore();
   }
 
@@ -177,6 +181,8 @@ export class VolatilityExitManager {
     this.state = "IDLE";
     this.secondSellStartTs = null;
     this.pendingSecondTarget = null;
+    this.lastFailedTriggerTs = null;
+    this.failedSides.clear();
   }
 
   // --- Private state machine methods ---
@@ -199,6 +205,12 @@ export class VolatilityExitManager {
     // Check trigger conditions
     if (analytics.crossingCount < RISK_PARAMS.volatilityExitCrossingThreshold) return;
     if (analytics.rangeUsd < RISK_PARAMS.volatilityExitRangeThresholdUsd) return;
+
+    // Fix 2: Cooldown after all-targets-failed cycle
+    if (this.lastFailedTriggerTs !== null) {
+      const sinceLastFail = Date.now() - this.lastFailedTriggerTs;
+      if (sinceLastFail < RISK_PARAMS.volatilityExitFailedTriggerCooldownMs) return;
+    }
 
     // Guard checks
     if (isExecutionBusy()) {
@@ -233,42 +245,63 @@ export class VolatilityExitManager {
       ).join(" → ")}`
     );
 
-    // Execute first sell
+    // Fix 1: Loop through ALL targets, not just targets[0]
     this.state = "SELLING_FIRST";
-    const firstTarget = targets[0];
-    const soldQty = await this.executeSell(firstTarget);
+    let firstSoldTarget: SellTarget | null = null;
+    let soldQty = 0;
 
-    if (soldQty > 0) {
-      this.firstSoldQty = soldQty;
+    for (let i = 0; i < targets.length; i++) {
+      const target = targets[i];
       this.deps.logger.info(
-        `[VOL-EXIT] First sell complete: ${soldQty} ${firstTarget.venue} ${firstTarget.side}`
+        `[VOL-EXIT] Attempting sell ${i + 1}/${targets.length}: ` +
+          `${target.venue} ${target.side} qty=${target.qty}`
       );
 
-      if (targets.length > 1) {
-        // Set up second sell
-        this.pendingSecondTarget = targets[1];
-        // Cap second sell qty to match first sold qty (maintain balance)
-        this.pendingSecondTarget.qty = Math.min(
-          this.pendingSecondTarget.qty,
-          soldQty
-        );
-        this.secondSellStartTs = Date.now();
-        this.state = "SELLING_SECOND";
+      soldQty = await this.executeSell(target);
+      if (soldQty > 0) {
+        firstSoldTarget = target;
+        this.firstSoldQty = soldQty;
         this.deps.logger.info(
-          `[VOL-EXIT] Waiting for second sell: ${this.pendingSecondTarget.venue} ${this.pendingSecondTarget.side}`
+          `[VOL-EXIT] First sell complete: ${soldQty} ${target.venue} ${target.side}`
         );
 
-        // Try immediately
-        await this.checkSecondSell();
+        // Set up remaining targets (excluding sold + failed sides) for second sell
+        const remaining = targets.filter(
+          (t, idx) =>
+            idx > i && !this.failedSides.has(`${t.venue}_${t.side}`)
+        );
+
+        if (remaining.length > 0) {
+          this.pendingSecondTarget = remaining[0];
+          this.pendingSecondTarget.qty = Math.min(
+            this.pendingSecondTarget.qty,
+            soldQty
+          );
+          this.secondSellStartTs = Date.now();
+          this.state = "SELLING_SECOND";
+          this.deps.logger.info(
+            `[VOL-EXIT] Waiting for second sell: ${this.pendingSecondTarget.venue} ${this.pendingSecondTarget.side}`
+          );
+          await this.checkSecondSell();
+        } else {
+          this.state = "DONE";
+          this.deps.logger.info("[VOL-EXIT] Exit complete (single position)");
+        }
+        return;
       } else {
-        this.state = "DONE";
-        this.deps.logger.info("[VOL-EXIT] Exit complete (single position)");
+        this.deps.logger.warn(
+          `[VOL-EXIT] Sell ${i + 1}/${targets.length} got no fill: ` +
+            `${target.venue} ${target.side}`
+        );
       }
-    } else {
-      // First sell failed — go back to monitoring
-      this.deps.logger.warn("[VOL-EXIT] First sell got no fill, returning to MONITORING");
-      this.state = "MONITORING";
     }
+
+    // ALL targets failed — cooldown and return to monitoring
+    this.deps.logger.warn(
+      "[VOL-EXIT] All sell targets failed, entering cooldown and returning to MONITORING"
+    );
+    this.lastFailedTriggerTs = Date.now();
+    this.state = "MONITORING";
   }
 
   private async checkSecondSell(): Promise<void> {
@@ -333,6 +366,7 @@ export class VolatilityExitManager {
 
     for (const { venue, side, position } of sides) {
       if (position <= 0) continue;
+      if (this.failedSides.has(`${venue}_${side}`)) continue;
 
       // Get market ID
       let marketId: string | null = null;
@@ -397,10 +431,16 @@ export class VolatilityExitManager {
         return await this.sellKalshi(target);
       }
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
       this.deps.logger.error(
-        `[VOL-EXIT] Sell error for ${target.venue} ${target.side}: ` +
-          `${error instanceof Error ? error.message : String(error)}`
+        `[VOL-EXIT] Sell error for ${target.venue} ${target.side}: ${errMsg}`
       );
+
+      // Fix 3a: Don't retry permanent failures
+      if (this.isPermanentSellFailure(errMsg)) {
+        this.markSideFailed(target.venue, target.side, errMsg);
+        return 0;
+      }
 
       // Retry once after 500ms at a lower price
       try {
@@ -412,13 +452,35 @@ export class VolatilityExitManager {
           return await this.sellKalshi(target);
         }
       } catch (retryError) {
+        const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
         this.deps.logger.error(
-          `[VOL-EXIT] Retry sell also failed: ` +
-            `${retryError instanceof Error ? retryError.message : String(retryError)}`
+          `[VOL-EXIT] Retry sell also failed: ${retryMsg}`
         );
+
+        if (this.isPermanentSellFailure(retryMsg)) {
+          this.markSideFailed(target.venue, target.side, retryMsg);
+        }
         return 0;
       }
     }
+  }
+
+  private isPermanentSellFailure(errMsg: string): boolean {
+    const lower = errMsg.toLowerCase();
+    return (
+      lower.includes("insufficient_balance") ||
+      lower.includes("market_closed") ||
+      lower.includes("trading_closed") ||
+      lower.includes("event_expired")
+    );
+  }
+
+  private markSideFailed(venue: Venue, side: Side, reason: string): void {
+    const key = `${venue}_${side}`;
+    this.failedSides.add(key);
+    this.deps.logger.warn(
+      `[VOL-EXIT] Permanently marking ${key} as failed: ${reason}`
+    );
   }
 
   private async sellPolymarket(target: SellTarget): Promise<number> {
@@ -429,11 +491,19 @@ export class VolatilityExitManager {
     let adjustedQty = target.qty;
     try {
       const balance = await client.getConditionalTokenBalance(target.marketId);
-      if (balance <= 0) return 0;
+      if (balance <= 0) {
+        throw new Error(`insufficient_balance: on-chain balance is 0 for ${target.marketId}`);
+      }
       adjustedQty = Math.min(adjustedQty, Math.floor(balance * 0.95));
-      if (adjustedQty <= 0) return 0;
-    } catch {
-      // Use tracker qty if balance check fails
+      if (adjustedQty <= 0) {
+        throw new Error(`insufficient_balance: adjusted qty is 0 (balance=${balance.toFixed(4)}) for ${target.marketId}`);
+      }
+    } catch (balanceErr) {
+      // Re-throw insufficient_balance errors so executeSell can detect them
+      if (balanceErr instanceof Error && balanceErr.message.includes("insufficient_balance")) {
+        throw balanceErr;
+      }
+      // Use tracker qty if balance check fails for other reasons
     }
 
     // Check that recent fills have settled (>2.5s)
