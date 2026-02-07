@@ -27,6 +27,7 @@ export { generateExecutionId, generateClientOrderId } from "./types";
 export {
   acquireBusyLock,
   releaseBusyLock,
+  markExecutionEnd,
   isExecutionBusy,
   setCurrentExecution,
   getCurrentExecution,

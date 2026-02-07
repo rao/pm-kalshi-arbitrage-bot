@@ -17,6 +17,7 @@ import { getPositions, setVenuePositions } from "./positionTracker";
 import {
   acquireBusyLock,
   releaseBusyLock,
+  markExecutionEnd,
   isExecutionBusy,
   isKillSwitchTriggered,
   isLiquidationInProgress,
@@ -421,6 +422,7 @@ async function executeCorrectiveAction(
     // Enter cooldown after corrective action
     enterCooldown();
   } finally {
+    markExecutionEnd();
     releaseBusyLock();
   }
 }

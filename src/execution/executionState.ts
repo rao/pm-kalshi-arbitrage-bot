@@ -85,6 +85,14 @@ export function acquireBusyLock(): boolean {
 export function releaseBusyLock(): void {
   state.busy = false;
   state.currentExecution = null;
+}
+
+/**
+ * Mark that a real execution (leg submitted to venue) has ended.
+ * Only call when an order was actually sent — not on guard-rejection early returns.
+ * The reconciler uses this timestamp for its post-execution grace period.
+ */
+export function markExecutionEnd(): void {
   lastExecutionEndTs = Date.now();
 }
 

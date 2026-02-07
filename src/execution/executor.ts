@@ -32,6 +32,7 @@ import { unwindLeg, simulateUnwind } from "./unwind";
 import {
   acquireBusyLock,
   releaseBusyLock,
+  markExecutionEnd,
   setCurrentExecution,
   isKillSwitchTriggered,
   isInCooldown,
@@ -201,6 +202,8 @@ export async function executeOpportunity(
     };
   }
 
+  let legSubmitted = false;
+
   try {
     // 5. Cap qty by remaining notional headroom before guards
     let qty = context.opportunity.qty;
@@ -336,6 +339,7 @@ export async function executeOpportunity(
     recordDecisionToSubmit(legA.submitTs - executionStartTs);
     logLegSubmit(record.id, "A", legAParams);
 
+    legSubmitted = true;
     let legAResult: OrderResult;
     try {
       legAResult = await placeOrderWithTimeout(
@@ -490,6 +494,9 @@ export async function executeOpportunity(
       error: error instanceof Error ? error.message : String(error),
     };
   } finally {
+    if (legSubmitted) {
+      markExecutionEnd();
+    }
     releaseBusyLock();
   }
 }

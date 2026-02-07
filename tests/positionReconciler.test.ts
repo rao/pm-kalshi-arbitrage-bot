@@ -15,6 +15,7 @@ import {
   triggerKillSwitch,
   acquireBusyLock,
   releaseBusyLock,
+  markExecutionEnd,
   startLiquidation,
   stopLiquidation,
   isInCooldown,
@@ -422,10 +423,10 @@ describe("positionReconciler", () => {
 
   describe("post-execution grace period", () => {
     test("skips tick within post-execution grace period", async () => {
-      // Simulate a recent execution by acquiring and releasing the busy lock
-      // (releaseBusyLock sets lastExecutionEndTs = Date.now())
+      // Simulate a recent real execution
       acquireBusyLock();
       releaseBusyLock();
+      markExecutionEnd();
 
       // Set local positions as if we just executed an arb
       recordFill("polymarket", "yes", "buy", 25, 0.89, TEST_INTERVAL);
