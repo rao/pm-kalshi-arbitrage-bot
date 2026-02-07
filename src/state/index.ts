@@ -23,6 +23,7 @@ export {
   getCurrentInterval,
   getFillHistory,
   getMarketIdForPosition,
+  getEntryVwap,
   resetPositionTracker,
   type PositionSnapshot,
   type VenuePosition,

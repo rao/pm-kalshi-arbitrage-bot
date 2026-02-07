@@ -31,6 +31,7 @@ import { getCurrentAsk, getCurrentBid } from "../execution/orderPlanner";
 import { generateClientOrderId } from "../execution/types";
 import { estimateKalshiFee, estimatePolymarketFee } from "../fees/feeEngine";
 import { RISK_PARAMS } from "../config/riskParams";
+import { isVolatilityExitActive } from "../execution/volatilityExitManager";
 
 /**
  * Venue-reported positions (from API).
@@ -441,7 +442,10 @@ export async function reconcileTick(options: PositionReconcilerOptions): Promise
       return;
     }
 
-    // 1b. Skip if within grace period after last execution.
+    // 1b. Skip if volatility exit is in progress
+    if (isVolatilityExitActive()) return;
+
+    // 1c. Skip if within grace period after last execution.
     // Venue APIs (especially Polymarket on-chain) may not reflect recent fills yet.
     // The local tracker is authoritative immediately after execution.
     const msSinceLastExec = Date.now() - getLastExecutionEndTs();

@@ -27,6 +27,7 @@ import {
   isExecutionBusy,
   isLiquidationInProgress,
 } from "./executionState";
+import { isVolatilityExitActive } from "./volatilityExitManager";
 
 // --- Options ---
 
@@ -147,6 +148,12 @@ export async function executePreCloseUnwind(options: PreCloseOptions): Promise<v
   // 1. Set flag immediately — blocks new arb scanning
   preCloseActive = true;
   logger.info("[PRE-CLOSE] === PRE-CLOSE SAFETY UNWIND STARTED ===");
+
+  // 1b. Defer if volatility exit is in progress
+  if (isVolatilityExitActive()) {
+    logger.info("[PRE-CLOSE] Volatility exit in progress, deferring");
+    return;
+  }
 
   // 2. Check positions
   if (!hasAnyPosition()) {

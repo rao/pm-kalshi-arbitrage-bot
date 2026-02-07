@@ -24,6 +24,11 @@ import {
 } from "../markets/discovery";
 import { PolymarketWsClient, type PolymarketWsClientOptions } from "../venues/polymarket/ws";
 import { KalshiWsClient, type KalshiWsClientOptions } from "../venues/kalshi/ws";
+import {
+  BinanceWsClient,
+  type BinanceWsClientOptions,
+} from "./binanceWs";
+import type { BtcPriceUpdate, BtcPriceCallback } from "../venues/polymarket/rtds";
 
 /**
  * Coordinator events for external monitoring.
@@ -83,6 +88,10 @@ export interface MarketDataCoordinatorOptions {
   rolloverReconnectDelayMs?: number;
   /** Callbacks for canceling orders on rollover */
   orderCancellation?: OrderCancellationCallbacks;
+  /** Enable Binance BTC price feed (default: true when polymarket venue is active) */
+  enableBtcPriceFeed?: boolean;
+  /** Binance WS client options */
+  binanceWsOptions?: BinanceWsClientOptions;
 }
 
 /**
@@ -97,6 +106,7 @@ export class MarketDataCoordinator {
   private discovery: MarketDiscovery;
   private polymarketWs: PolymarketWsClient | null = null;
   private kalshiWs: KalshiWsClient | null = null;
+  private btcPriceClient: BinanceWsClient | null = null;
   private debug: boolean;
   private rolloverReconnectDelayMs: number;
   private orderCancellation: OrderCancellationCallbacks | undefined;
@@ -124,6 +134,7 @@ export class MarketDataCoordinator {
 
   private quoteCallbacks: QuoteUpdateCallback[] = [];
   private eventCallbacks: CoordinatorEventCallback[] = [];
+  private btcPriceCallbacks: BtcPriceCallback[] = [];
   private discoveryCallback: DiscoveryEventCallback | null = null;
 
   constructor(options: MarketDataCoordinatorOptions) {
@@ -148,6 +159,15 @@ export class MarketDataCoordinator {
     if (venues.includes("kalshi") && options.kalshiWsOptions) {
       this.kalshiWs = new KalshiWsClient({
         ...options.kalshiWsOptions,
+        debug: options.debug,
+      });
+    }
+
+    // Initialize Binance WS client for BTC price feed (continuous, not tied to intervals)
+    const enableBtcPriceFeed = options.enableBtcPriceFeed ?? venues.includes("polymarket");
+    if (enableBtcPriceFeed) {
+      this.btcPriceClient = new BinanceWsClient({
+        ...options.binanceWsOptions,
         debug: options.debug,
       });
     }
@@ -185,6 +205,37 @@ export class MarketDataCoordinator {
     if (index !== -1) {
       this.eventCallbacks.splice(index, 1);
     }
+  }
+
+  /**
+   * Register a callback for BTC price updates from RTDS.
+   */
+  onBtcPrice(callback: BtcPriceCallback): void {
+    this.btcPriceCallbacks.push(callback);
+  }
+
+  /**
+   * Remove a BTC price callback.
+   */
+  offBtcPrice(callback: BtcPriceCallback): void {
+    const index = this.btcPriceCallbacks.indexOf(callback);
+    if (index !== -1) {
+      this.btcPriceCallbacks.splice(index, 1);
+    }
+  }
+
+  /**
+   * Get the latest cached BTC price (synchronous).
+   */
+  getLatestBtcPrice(): BtcPriceUpdate | null {
+    return this.btcPriceClient?.getLatestPrice() ?? null;
+  }
+
+  /**
+   * Get the BTC price client (for testing/debugging).
+   */
+  getBtcPriceClient(): BinanceWsClient | null {
+    return this.btcPriceClient;
   }
 
   /**
@@ -254,6 +305,27 @@ export class MarketDataCoordinator {
       );
     }
 
+    // Connect Binance WS (BTC price feed — continuous, not tied to intervals)
+    if (this.btcPriceClient) {
+      this.btcPriceClient.onPriceUpdate((update) => {
+        for (const callback of this.btcPriceCallbacks) {
+          try {
+            callback(update);
+          } catch (error) {
+            console.error("Error in BTC price callback:", error);
+          }
+        }
+      });
+      this.btcPriceClient.onStateChange((state) => {
+        this.log("Binance WS connection state:", state);
+      });
+      connectPromises.push(
+        this.btcPriceClient.connect().catch((error) => {
+          this.log("Binance WS connect failed (non-fatal):", error);
+        })
+      );
+    }
+
     // Wait for connections
     await Promise.all(connectPromises);
 
@@ -310,6 +382,11 @@ export class MarketDataCoordinator {
       disconnectPromises.push(
         this.kalshiWs.unsubscribeAll().then(() => this.kalshiWs!.disconnect())
       );
+    }
+
+    // Disconnect Binance WS (continuous feed, no unsubscribe needed)
+    if (this.btcPriceClient) {
+      disconnectPromises.push(this.btcPriceClient.disconnect());
     }
 
     await Promise.all(disconnectPromises);

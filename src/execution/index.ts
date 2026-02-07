@@ -94,6 +94,15 @@ export { forceLiquidateAll, type ForceLiquidateResult } from "./liquidator";
 // Balance monitoring
 export { startBalanceMonitor, stopBalanceMonitor } from "./balanceMonitor";
 
+// Volatility exit
+export {
+  VolatilityExitManager,
+  isVolatilityExitActive,
+  setActiveVolatilityExitManager,
+  type VolatilityExitDeps,
+  type VolatilityExitState,
+} from "./volatilityExitManager";
+
 // Venue client factory for live trading
 export {
   initializeVenueClients,

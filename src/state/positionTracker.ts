@@ -298,6 +298,39 @@ export function getMarketIdForPosition(venue: Venue, side: Side): string | null 
   return state.lastMarketIds.get(`${venue}_${side}`) ?? null;
 }
 
+// === Entry price helpers ===
+
+/**
+ * Compute volume-weighted average entry price for buy fills on a venue+side.
+ *
+ * @param venue - Venue to filter by
+ * @param side - Side to filter by
+ * @param intervalKey - Optional interval to filter by (uses all history if not provided)
+ * @returns VWAP of buy fills, or null if no matching fills
+ */
+export function getEntryVwap(venue: Venue, side: Side, intervalKey?: IntervalKey): number | null {
+  let fills = state.fillHistory.filter(
+    (f) => f.venue === venue && f.side === side && f.action === "buy"
+  );
+
+  if (intervalKey) {
+    const key = intervalKeyToString(intervalKey);
+    fills = fills.filter((f) => f.intervalKey === key);
+  }
+
+  if (fills.length === 0) return null;
+
+  let totalCost = 0;
+  let totalQty = 0;
+  for (const fill of fills) {
+    totalCost += fill.price * fill.qty;
+    totalQty += fill.qty;
+  }
+
+  if (totalQty === 0) return null;
+  return totalCost / totalQty;
+}
+
 // === Reset (for testing) ===
 
 /**

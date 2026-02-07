@@ -62,6 +62,32 @@ export const RISK_PARAMS = {
    * Mitigates oracle divergence dead zones where Kalshi ref > Poly ref.
    */
   preferredConfigBonus: 0.01,
+
+  // --- Pre-close unwind ---
+
+  /** Start pre-close unwind N ms before rollover (70s) */
+  preCloseUnwindMs: 70000,
+  /** Fraction of position to retain through settlement (5%) */
+  preCloseRetainPct: 0.05,
+
+  // --- Volatility exit system ---
+
+  /** Enable volatility-based position exit */
+  volatilityExitEnabled: true,
+  /** Min BTC reference crossings to trigger */
+  volatilityExitCrossingThreshold: 2,
+  /** Min BTC range (USD) within interval to trigger */
+  volatilityExitRangeThresholdUsd: 100,
+  /** Min profit per contract to sell a side (bid - entry) */
+  volatilityExitMinProfitPerShare: 0.02,
+  /** Only activate in last N ms of interval (7.5 min = 450000) */
+  volatilityExitWindowMs: 450000,
+  /** Max wait for second side to become profitable (ms) */
+  volatilityExitSecondSellTimeoutMs: 120000,
+  /** Halt all trading in last N ms if volatile (1 min = 60000) */
+  volatilityHaltWindowMs: 60000,
+  /** Sell price offset below bid (1 tick) */
+  volatilityExitSellPriceOffset: 0.01,
 } as const;
 
 export type RiskParams = typeof RISK_PARAMS;

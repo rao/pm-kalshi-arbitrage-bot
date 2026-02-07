@@ -25,6 +25,7 @@ import {
   type OrderCancellationCallbacks,
 } from "./data/marketDataCoordinator";
 import type { QuoteUpdateEvent, NormalizedQuote } from "./normalization/types";
+import type { BtcPriceUpdate } from "./venues/polymarket/rtds";
 import type { IntervalKey } from "./time/interval";
 import { formatIntervalKey, getIntervalKey } from "./time/interval";
 import { getFeeBuffer } from "./fees/feeEngine";
@@ -58,6 +59,11 @@ import {
 import { getPositions, clearPositionsForInterval, setCurrentInterval } from "./state";
 import { startPositionReconciler, stopPositionReconciler } from "./state/positionReconciler";
 import { incrementOpportunities, getMetricsSummary } from "./logging/metrics";
+import {
+  VolatilityExitManager,
+  setActiveVolatilityExitManager,
+} from "./execution/volatilityExitManager";
+import { resetForInterval as resetBtcPriceStore } from "./data/btcPriceStore";
 
 /**
  * Quote cache - maintains latest quote per venue.
@@ -81,6 +87,10 @@ interface AppState {
   statusIntervalMs: number;
   /** Initialized venue clients for live trading (null in dry run) */
   venueClients: InitializedClients | null;
+  /** Latest BTC spot price from Binance WS */
+  latestBtcPrice: BtcPriceUpdate | null;
+  /** Volatility exit manager (null in dry run without venue clients) */
+  volatilityExitManager: VolatilityExitManager | null;
 }
 
 const state: AppState = {
@@ -96,6 +106,8 @@ const state: AppState = {
   running: false,
   statusIntervalMs: 60000, // 60 second status updates
   venueClients: null,
+  latestBtcPrice: null,
+  volatilityExitManager: null,
 };
 
 /**
@@ -279,6 +291,14 @@ async function handleQuoteUpdate(event: QuoteUpdateEvent): Promise<void> {
   }
   state.quoteCache.intervalKey = event.intervalKey;
 
+  // Block arb scanning if volatility exit is active or trading halted
+  if (state.volatilityExitManager?.isActive()) {
+    return;
+  }
+  if (state.volatilityExitManager?.shouldHaltTrading()) {
+    return;
+  }
+
   // Scan for arbitrage (silent unless opportunity found)
   const scanResult = scanForArbitrage({
     polyQuote: state.quoteCache.polymarket,
@@ -327,6 +347,10 @@ function handleCoordinatorEvent(event: CoordinatorEvent): void {
       // Clear position tracker for old interval (prevents stale positions carrying over)
       clearPositionsForInterval(event.oldInterval);
       state.logger.info(`Cleared positions for interval ${formatIntervalKey(event.oldInterval)}`);
+
+      // Reset BTC price store and volatility exit manager for new interval
+      resetBtcPriceStore();
+      state.volatilityExitManager?.resetForInterval();
       break;
 
     case "ROLLOVER_COMPLETED":
@@ -409,6 +433,12 @@ async function shutdown(): Promise<void> {
   state.logger.stopMetricsInterval();
   stopBalanceMonitor();
   stopPositionReconciler();
+
+  // Stop volatility exit manager
+  if (state.volatilityExitManager) {
+    state.volatilityExitManager.stop();
+    setActiveVolatilityExitManager(null);
+  }
 
   // Cancel all open orders on both venues
   if (state.venueClients) {
@@ -594,6 +624,20 @@ async function main(): Promise<void> {
     });
   }
 
+  // Initialize volatility exit manager
+  if (RISK_PARAMS.volatilityExitEnabled) {
+    state.volatilityExitManager = new VolatilityExitManager({
+      logger: state.logger,
+      venueClients: state.venueClients ?? { polymarket: null, kalshi: null },
+      getCurrentMapping: () => state.discovery?.getStore().getCurrentMapping() ?? null,
+      getQuote: (venue) =>
+        venue === "polymarket" ? state.quoteCache.polymarket : state.quoteCache.kalshi,
+      dryRun: config.dryRun,
+    });
+    setActiveVolatilityExitManager(state.volatilityExitManager);
+    state.logger.info("[VOL-EXIT] Volatility exit manager initialized");
+  }
+
   // Create discovery (determines venues based on available API keys)
   const kalshiApiKeyId = process.env.KALSHI_API_KEY;
   const kalshiPrivateKey = process.env.KALSHI_PRIVATE_KEY;
@@ -644,6 +688,10 @@ async function main(): Promise<void> {
   // Set up event handlers
   state.coordinator.onQuote(handleQuoteUpdate);
   state.coordinator.onEvent(handleCoordinatorEvent);
+  state.coordinator.onBtcPrice((update) => {
+    state.latestBtcPrice = update;
+    state.volatilityExitManager?.onBtcPriceUpdate(update);
+  });
 
   // Set up signal handlers
   process.on("SIGINT", async () => {
