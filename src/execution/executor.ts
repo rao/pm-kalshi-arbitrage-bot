@@ -74,6 +74,7 @@ import {
   getOpenOrderCount,
   getPositions,
 } from "../state";
+import { recordFillAttempt } from "../logging/fillTracker";
 
 
 /**
@@ -328,17 +329,16 @@ export async function executeOpportunity(
       throw new Error("venueClients required for live execution");
     }
 
-    logExecutionStart(record);
     const executionStartTs = Date.now();
 
     // === Step 1: Submit Leg A (Polymarket IOC) ===
     record.status = "leg_a_submitting";
     legA.submitTs = Date.now();
 
-    // Record decision-to-submit latency
-    recordDecisionToSubmit(legA.submitTs - executionStartTs);
-    logLegSubmit(record.id, "A", legAParams);
+    // Pre-compute Kalshi RSA-PSS signature while Poly order is in flight
+    venueClients.prepareOrder?.(legBParams);
 
+    recordDecisionToSubmit(legA.submitTs - executionStartTs);
     legSubmitted = true;
     let legAResult: OrderResult;
     try {
@@ -348,6 +348,10 @@ export async function executeOpportunity(
     } catch (error) {
       legAResult = createTimeoutResult(legAParams, legA.submitTs, error);
     }
+
+    // Deferred logging — after order sent, before processing result
+    logExecutionStart(record);
+    logLegSubmit(record.id, "A", legAParams);
 
     legA.result = legAResult;
     const legALatency = Date.now() - legA.submitTs;
@@ -373,6 +377,23 @@ export async function executeOpportunity(
       incrementExecutions(false);
       logExecutionComplete(record);
 
+      // Track fill attempt (post-execution, zero latency impact)
+      const spreadAtDetection = (
+        (context.polyQuote.yes_ask - context.polyQuote.yes_bid) +
+        (context.kalshiQuote.yes_ask - context.kalshiQuote.yes_bid)
+      ) / 2;
+      recordFillAttempt({
+        intervalKey: context.opportunity.intervalKey,
+        legAResult,
+        legBResult: null,
+        requestedQty: legAParams.qty,
+        legALatencyMs: legALatency,
+        legBLatencyMs: null,
+        edgeNet: context.opportunity.edgeNet,
+        spreadAtDetection,
+        realizedPnl: 0,
+      }).catch(() => {});
+
       return {
         success: false,
         record,
@@ -386,8 +407,6 @@ export async function executeOpportunity(
     legA.fillTs = legAResult.filledAt ?? Date.now();
     const polyFillQty = legAResult.fillQty;
     const kalshiFillQty = Math.floor(polyFillQty);
-
-    console.log(`[EXECUTOR] Polymarket IOC filled: ${polyFillQty} tokens. Kalshi target: ${kalshiFillQty} contracts.`);
 
     // Check if fill qty meets minimum for Kalshi hedging
     if (kalshiFillQty < RISK_PARAMS.minPartialFillQty) {
@@ -415,8 +434,28 @@ export async function executeOpportunity(
       );
     }
 
-    // Record Leg A position
+    // Record notional for correctness (guards may check this)
     addNotional(legAResult.fillPrice * legAResult.fillQty);
+
+    // Rebuild Leg B params with actual fill qty
+    const legBParamsAdjusted = { ...legBParams, qty: kalshiFillQty };
+    legB.params = legBParamsAdjusted;
+
+    // === Step 4: Submit Leg B (Kalshi FOK) — minimize inter-leg gap ===
+    record.status = "leg_b_submitting";
+    legB.submitTs = Date.now();
+
+    let legBResult: OrderResult;
+    try {
+      legBResult = await placeOrderWithTimeout(
+        venueClients, legBParamsAdjusted, RISK_PARAMS.legOrderTimeoutMs
+      );
+    } catch (error) {
+      legBResult = createTimeoutResult(legBParamsAdjusted, legB.submitTs, error);
+    }
+
+    // === Deferred work: logging + state updates after both orders sent ===
+    console.log(`[EXECUTOR] Polymarket IOC filled: ${polyFillQty} tokens. Kalshi target: ${kalshiFillQty} contracts.`);
     recordFill(
       legAParams.venue,
       legAParams.side,
@@ -427,26 +466,8 @@ export async function executeOpportunity(
       legAResult.orderId ?? undefined,
       legAParams.marketId
     );
-
-    // Rebuild Leg B params with actual fill qty
-    const legBParamsAdjusted = { ...legBParams, qty: kalshiFillQty };
-    legB.params = legBParamsAdjusted;
-
-    // === Step 4: Submit Leg B (Kalshi FOK) ===
-    record.status = "leg_b_submitting";
-    legB.submitTs = Date.now();
-
     recordLegAToLegB(legB.submitTs - legA.fillTs);
     logLegSubmit(record.id, "B", legBParamsAdjusted);
-
-    let legBResult: OrderResult;
-    try {
-      legBResult = await placeOrderWithTimeout(
-        venueClients, legBParamsAdjusted, RISK_PARAMS.legOrderTimeoutMs
-      );
-    } catch (error) {
-      legBResult = createTimeoutResult(legBParamsAdjusted, legB.submitTs, error);
-    }
 
     // Cancel-then-verify for Kalshi timeouts
     if (legBResult.status === "timeout" && legBResult.orderId) {
@@ -471,19 +492,55 @@ export async function executeOpportunity(
       console.warn(`[EXECUTOR] PARADOX: Leg B status=filled but success=false - treating as filled`);
     }
 
+    // Spread proxy for volatility tracking
+    const spreadAtDetection = (
+      (context.polyQuote.yes_ask - context.polyQuote.yes_bid) +
+      (context.kalshiQuote.yes_ask - context.kalshiQuote.yes_bid)
+    ) / 2;
+
     if (legBSuccess) {
       // BOTH FILLED — arb complete (box locked)
-      return handleBothFilled(record, context, legA, legB, legAResult, legBResult, executionStartTs);
+      const result = handleBothFilled(record, context, legA, legB, legAResult, legBResult, executionStartTs);
+
+      // Track fill attempt (post-execution, zero latency impact)
+      recordFillAttempt({
+        intervalKey: context.opportunity.intervalKey,
+        legAResult,
+        legBResult,
+        requestedQty: legAParams.qty,
+        legALatencyMs: legALatency,
+        legBLatencyMs: legBLatency,
+        edgeNet: context.opportunity.edgeNet,
+        spreadAtDetection,
+        realizedPnl: result.record.realizedPnl ?? 0,
+      }).catch(() => {});
+
+      return result;
     }
 
     // Kalshi failed — unwind Polymarket position
-    return await handleParallelUnwind(
+    const unwindResult = await handleParallelUnwind(
       record,
       context,
       venueClients,
       "A",
       `Kalshi FOK failed: ${legBResult.error ?? legBResult.status}`
     );
+
+    // Track fill attempt (post-execution, zero latency impact)
+    recordFillAttempt({
+      intervalKey: context.opportunity.intervalKey,
+      legAResult,
+      legBResult,
+      requestedQty: legAParams.qty,
+      legALatencyMs: legALatency,
+      legBLatencyMs: legBLatency,
+      edgeNet: context.opportunity.edgeNet,
+      spreadAtDetection,
+      realizedPnl: unwindResult.record.realizedPnl ?? 0,
+    }).catch(() => {});
+
+    return unwindResult;
   } catch (error) {
     logExecutionError("Executor", error instanceof Error ? error : String(error));
     return {
@@ -612,8 +669,8 @@ function handleBothFilled(
   legA.fillTs = legAResult.filledAt ?? Date.now();
   legB.fillTs = legBResult.filledAt ?? Date.now();
 
-  // Note: Leg A position and notional are already recorded in the sequential flow
-  // (before Leg B submission), so we only record Leg B here to avoid double-counting.
+  // Note: Leg A notional + position are already recorded (notional before Leg B submit,
+  // recordFill in deferred block after Leg B submit), so we only record Leg B here.
   addNotional(legBResult.fillPrice * legBResult.fillQty);
 
   recordFill(

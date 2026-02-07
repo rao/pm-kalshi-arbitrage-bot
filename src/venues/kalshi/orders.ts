@@ -108,7 +108,7 @@ export async function createOrder(
   if (request.reduce_only !== undefined) body.reduce_only = request.reduce_only;
 
   const path = `${API_PATH_PREFIX}/portfolio/orders`;
-  const headers = await auth.getHeaders("POST", path);
+  const headers = await auth.getHeadersCached("POST", path);
 
   const response = await fetch(`${KALSHI_API_BASE}${path}`, {
     method: "POST",

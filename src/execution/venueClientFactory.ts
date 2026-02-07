@@ -149,14 +149,7 @@ async function placePolymarketOrder(
     // Determine if this is an IOC/FAK order (for sequential execution)
     const isFakOrder = params.timeInForce === "IOC";
 
-    // Log order details
     const orderTypeLabel = isMarketOrder ? "MARKET" : (isFakOrder ? "FAK/IOC" : "FOK");
-    console.log(`[POLYMARKET] Submitting ${orderTypeLabel} order:`, JSON.stringify({
-      tokenId: params.marketId,
-      price: effectivePrice,
-      ...(isFakOrder ? { amount: params.qty * effectivePrice } : { size: params.qty }),
-      side: params.action,
-    }));
 
     let response: { success: boolean; orderID?: string; orderId?: string; errorMsg?: string; status?: string; takingAmount?: string; makingAmount?: string };
 
@@ -190,8 +183,8 @@ async function placePolymarketOrder(
     const filled = response.success === true && orderId !== null;
     const matched = response.status === "matched";
 
-    // Log detailed response for debugging
-    console.log(`[POLYMARKET] Order response: success=${response.success}, status=${response.status}, orderId=${orderId?.substring(0, 20) ?? "N/A"}...`);
+    // Log submission + response together (deferred from pre-submission for latency)
+    console.log(`[POLYMARKET] ${orderTypeLabel} order: success=${response.success}, status=${response.status}, orderId=${orderId?.substring(0, 20) ?? "N/A"}...`);
 
     // Compute fill qty and price from response amounts
     let fillQty = 0;
@@ -344,25 +337,11 @@ async function placeKalshiOrder(
       }
     }
 
-    // Log order details for debugging
-    const logDetails: Record<string, unknown> = {
-      ticker: request.ticker,
-      side: request.side,
-      action: request.action,
-      count: request.count,
-      type: request.type,
-    };
-    if (!isMarketOrder) {
-      logDetails.price = request.yes_price ?? request.no_price;
-      logDetails.time_in_force = request.time_in_force;
-    }
-    console.log(`[KALSHI] Submitting ${isMarketOrder ? "MARKET" : "LIMIT"} order:`, JSON.stringify(logDetails));
-
     // Submit order
     const response = await kalshiCreateOrder(clients.auth, request);
 
-    // Log full response for debugging
-    console.log(`[KALSHI] Response:`, JSON.stringify(response.order));
+    // Log submission + response together (deferred from pre-submission for latency)
+    console.log(`[KALSHI] ${isMarketOrder ? "MARKET" : "LIMIT"} order: ticker=${request.ticker}, side=${request.side}, action=${request.action}, count=${request.count}, status=${response.order.status}`);
 
     // Check fill status
     const order = response.order;
@@ -642,6 +621,12 @@ export function createLiveVenueClients(
         return clients.polymarket.getConditionalTokenBalance(tokenId);
       }
       return 0;
+    },
+
+    prepareOrder: (params: OrderParams): void => {
+      if (params.venue === "kalshi" && clients.kalshi) {
+        clients.kalshi.auth.precomputeHeaders("POST", "/trade-api/v2/portfolio/orders");
+      }
     },
   };
 }

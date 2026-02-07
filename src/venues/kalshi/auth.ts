@@ -247,6 +247,7 @@ export class KalshiAuth {
   private apiKeyId: string;
   private privateKey: CryptoKey | null = null;
   private keySource: string;
+  private cachedHeaders: { key: string; promise: Promise<KalshiAuthHeaders>; ts: number } | null = null;
 
   /**
    * Create a KalshiAuth instance.
@@ -287,6 +288,39 @@ export class KalshiAuth {
       throw new Error("KalshiAuth not initialized. Call init() first.");
     }
     return generateAuthHeaders(this.apiKeyId, this.privateKey, method, path);
+  }
+
+  /**
+   * Pre-compute and cache auth headers for an upcoming request.
+   * Starts the RSA-PSS signing in the background so it's ready when needed.
+   *
+   * @param method - HTTP method
+   * @param path - Request path
+   */
+  precomputeHeaders(method: string, path: string): void {
+    this.cachedHeaders = {
+      key: `${method}:${path}`,
+      promise: this.getHeaders(method, path),
+      ts: Date.now(),
+    };
+  }
+
+  /**
+   * Get headers, using pre-computed cache if available and fresh (< 2s).
+   * Falls back to computing fresh headers if no cache hit.
+   *
+   * @param method - HTTP method
+   * @param path - Request path
+   * @returns Headers object
+   */
+  async getHeadersCached(method: string, path: string): Promise<KalshiAuthHeaders> {
+    const key = `${method}:${path}`;
+    if (this.cachedHeaders?.key === key && Date.now() - this.cachedHeaders.ts < 2000) {
+      const cached = this.cachedHeaders;
+      this.cachedHeaders = null;
+      return cached.promise;
+    }
+    return this.getHeaders(method, path);
   }
 
   /**
