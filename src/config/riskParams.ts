@@ -9,9 +9,9 @@
 
 export const RISK_PARAMS = {
   /** Maximum total notional across both venues */
-  maxNotional: 416.0,
+  maxNotional: 360.0,
   /** Maximum notional per venue */
-  maxNotionalPerVenue: 208.0,
+  maxNotionalPerVenue: 180.0,
   /** Number of contracts per trade leg */
   qtyPerTrade: 1,
   /** Minimum net edge after fees/slippage required to trade ($0.04) */
@@ -54,6 +54,12 @@ export const RISK_PARAMS = {
   minVenueBalance: 10.0,
   /** Grace period after execution before reconciler acts (ms). Polymarket on-chain settlement can take 5-15s. */
   reconcilerPostExecGracePeriodMs: 30000,
+  /**
+   * Cost bonus for preferred box config (Poly YES + Kalshi NO).
+   * Config 2 (Kalshi YES + Poly NO) must be cheaper by at least this amount to be chosen.
+   * Mitigates oracle divergence dead zones where Kalshi ref > Poly ref.
+   */
+  preferredConfigBonus: 0.01,
 } as const;
 
 export type RiskParams = typeof RISK_PARAMS;

@@ -80,8 +80,13 @@ function findBestBox(
     cost: config2Cost,
   };
 
-  // Return the cheaper configuration
-  return config1Cost <= config2Cost ? config1 : config2;
+  // Prefer Config 1 (Poly YES + Kalshi NO) to mitigate oracle divergence.
+  // When Kalshi ref > Poly ref, BTC landing in the dead zone means Poly says UP, Kalshi says DOWN.
+  // Config 1 wins in that scenario; Config 2 loses on both legs.
+  // Config 2 must be cheaper by preferredConfigBonus to override.
+  return config1Cost <= (config2Cost + RISK_PARAMS.preferredConfigBonus)
+    ? config1
+    : config2;
 }
 
 /**
