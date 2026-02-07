@@ -9,9 +9,9 @@
 
 export const RISK_PARAMS = {
   /** Maximum total notional across both venues */
-  maxNotional: 490.0,
+  maxNotional: 500.0,
   /** Maximum notional per venue */
-  maxNotionalPerVenue: 245.0,
+  maxNotionalPerVenue: 250.0,
   /** Number of contracts per trade leg */
   qtyPerTrade: 1,
   /** Minimum net edge after fees/slippage required to trade ($0.04) */
