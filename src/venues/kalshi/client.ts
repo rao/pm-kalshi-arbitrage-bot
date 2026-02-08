@@ -422,6 +422,20 @@ export function centsToDecimal(cents: number): number {
 }
 
 /**
+ * Parse a BTC reference/strike price from a title or question string.
+ *
+ * Matches patterns like "$97,330" or "$100,123.45" and returns the numeric value.
+ * Returns null if no price pattern found.
+ */
+export function parseReferencePrice(text: string): number | null {
+  const match = text.match(/\$([\d,]+(?:\.\d+)?)/);
+  if (!match) return null;
+  const cleaned = match[1].replace(/,/g, "");
+  const value = parseFloat(cleaned);
+  return isNaN(value) ? null : value;
+}
+
+/**
  * Normalize raw event data into KalshiEventInfo.
  *
  * @param raw - Raw event data from API
@@ -439,6 +453,9 @@ export function normalizeEvent(raw: KalshiEventRaw): KalshiEventInfo {
   const endTs = closeTs;
   const startTs = endTs - INTERVAL_DURATION_S;
   const intervalKey: IntervalKey = { startTs, endTs };
+
+  // Parse reference price from event title (e.g. "Bitcoin above $97,330 at 5:30 PM ET")
+  const referencePrice = parseReferencePrice(raw.title);
 
   return {
     eventTicker: raw.event_ticker,
@@ -458,5 +475,6 @@ export function normalizeEvent(raw: KalshiEventRaw): KalshiEventInfo {
       ask: market ? centsToDecimal(market.no_ask) : 0,
     },
     intervalKey,
+    referencePrice: referencePrice ?? undefined,
   };
 }

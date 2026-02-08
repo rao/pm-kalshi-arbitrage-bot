@@ -195,6 +195,7 @@ export class MarketDiscovery {
       downToken: market.tokenIds.down,
       slug: market.slug,
       endTs: market.endTs,
+      referencePrice: market.referencePrice,
     };
   }
 
@@ -207,6 +208,7 @@ export class MarketDiscovery {
       marketTicker: event.marketTicker,
       seriesTicker: event.seriesTicker,
       closeTs: event.closeTs,
+      referencePrice: event.referencePrice,
     };
   }
 

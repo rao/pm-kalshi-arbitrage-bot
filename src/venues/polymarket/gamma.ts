@@ -267,6 +267,20 @@ export function extractSlugTimestamp(slug: string): number | null {
 }
 
 /**
+ * Parse a BTC reference/strike price from a question or title string.
+ *
+ * Matches patterns like "$97,320" or "$100,123.45" and returns the numeric value.
+ * Returns null if no price pattern found.
+ */
+export function parseReferencePrice(text: string): number | null {
+  const match = text.match(/\$([\d,]+(?:\.\d+)?)/);
+  if (!match) return null;
+  const cleaned = match[1].replace(/,/g, "");
+  const value = parseFloat(cleaned);
+  return isNaN(value) ? null : value;
+}
+
+/**
  * Normalize raw market data into MarketInfo.
  *
  * @param raw - Raw market data from Gamma API
@@ -296,6 +310,9 @@ export function normalizeMarket(
     }
   }
 
+  // Parse reference price from question text (e.g. "Will the price of BTC be above $97,320 at...?")
+  const referencePrice = parseReferencePrice(raw.question);
+
   return {
     slug: raw.slug,
     question: raw.question,
@@ -305,5 +322,6 @@ export function normalizeMarket(
     prices,
     acceptingOrders: raw.acceptingOrders,
     intervalKey,
+    referencePrice: referencePrice ?? undefined,
   };
 }

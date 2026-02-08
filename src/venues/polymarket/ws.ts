@@ -266,6 +266,7 @@ export class PolymarketWsClient {
     }
 
     this.subscriptions.clear();
+    this.recentUnmatchedAssetIds.clear();
 
     if (this.state === "connected" && this.ws && allTokens.length > 0) {
       const message: PolyUnsubscribeMessage = {

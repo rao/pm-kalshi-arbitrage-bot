@@ -23,6 +23,10 @@ export interface GammaMarketRaw {
   outcomePrices: string;
   /** Whether market is accepting orders */
   acceptingOrders: boolean;
+  /** Whether market has been resolved */
+  resolved?: boolean;
+  /** Resolution outcome (e.g., "Up", "Down") */
+  resolution?: string;
 }
 
 /**
@@ -55,6 +59,8 @@ export interface MarketInfo {
   acceptingOrders: boolean;
   /** Associated interval key */
   intervalKey: IntervalKey;
+  /** BTC strike/reference price parsed from question text */
+  referencePrice?: number;
 }
 
 /**

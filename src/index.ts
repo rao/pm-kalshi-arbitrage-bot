@@ -67,6 +67,15 @@ import { resetForInterval as resetBtcPriceStore } from "./data/btcPriceStore";
 import { fetchIntervalStartPrice } from "./data/fetchIntervalStartPrice";
 import { initMlLogger } from "./logging/mlLogger";
 import { installClobErrorFilter } from "./logging/clobErrorFilter";
+import {
+  recordTick as twapRecordTick,
+  freezeAtClose as twapFreezeAtClose,
+  resetForInterval as twapResetForInterval,
+  getFrozenTwap,
+  getFrozenSpot,
+} from "./data/twapStore";
+import { scheduleSettlementCheck } from "./data/settlementTracker";
+import { initSettlementLogger } from "./logging/settlementLogger";
 
 /**
  * Quote cache - maintains latest quote per venue.
@@ -334,15 +343,21 @@ async function handleQuoteUpdate(event: QuoteUpdateEvent): Promise<void> {
  */
 function handleCoordinatorEvent(event: CoordinatorEvent): void {
   switch (event.type) {
-    case "ROLLOVER_STARTED":
+    case "ROLLOVER_STARTED": {
       state.logger.info(
         `Rollover started: ${formatIntervalKey(event.oldInterval)} -> ${formatIntervalKey(event.newInterval)}`
       );
-      // Clear quote cache on rollover
+      // 1. Clear quote cache on rollover
       state.quoteCache.polymarket = null;
       state.quoteCache.kalshi = null;
 
-      // Settle pending PnL for the old interval (contracts settle at interval end)
+      // 2. Freeze TWAP + spot BEFORE resetting BTC price store
+      twapFreezeAtClose();
+
+      // 3. Capture old mapping before it might get pruned
+      const oldMapping = state.discovery?.getStore().getMapping(event.oldInterval) ?? null;
+
+      // 4. Settle pending PnL for the old interval (contracts settle at interval end)
       const settlementResult = settlePending(event.oldInterval);
       if (settlementResult.settled.length > 0) {
         state.logger.info(
@@ -351,14 +366,37 @@ function handleCoordinatorEvent(event: CoordinatorEvent): void {
         );
       }
 
-      // Clear position tracker for old interval (prevents stale positions carrying over)
+      // 5. Dead zone early warning (before async settlement check)
+      const frozenTwap = getFrozenTwap();
+      const frozenSpot = getFrozenSpot();
+      const kalshiRef = oldMapping?.kalshi?.referencePrice;
+      const polyRef = oldMapping?.polymarket?.referencePrice;
+
+      if (kalshiRef && polyRef && frozenTwap && frozenSpot) {
+        const kalshiSaysUp = frozenTwap >= kalshiRef;
+        const polySaysUp = frozenSpot >= polyRef;
+        if (kalshiSaysUp !== polySaysUp) {
+          state.logger.error(
+            `[DEAD ZONE] Oracle disagreement! ` +
+            `Kalshi: ${kalshiSaysUp ? "UP" : "DOWN"} (TWAP=$${frozenTwap.toFixed(0)} vs ref=$${kalshiRef.toFixed(0)}), ` +
+            `Poly: ${polySaysUp ? "UP" : "DOWN"} (spot=$${frozenSpot.toFixed(0)} vs ref=$${polyRef.toFixed(0)})`
+          );
+        }
+      }
+
+      // 6. Schedule async settlement check (queries venues after 15s delay)
+      scheduleSettlementCheck(event.oldInterval, oldMapping, state.logger);
+
+      // 7. Clear position tracker for old interval (prevents stale positions carrying over)
       clearPositionsForInterval(event.oldInterval);
       state.logger.info(`Cleared positions for interval ${formatIntervalKey(event.oldInterval)}`);
 
-      // Reset BTC price store and volatility exit manager for new interval
+      // 8. Reset BTC price store, TWAP store, and volatility exit manager for new interval
       resetBtcPriceStore();
+      twapResetForInterval();
       state.volatilityExitManager?.resetForInterval();
       break;
+    }
 
     case "ROLLOVER_COMPLETED":
       setCurrentInterval(event.newInterval);
@@ -525,6 +563,9 @@ async function main(): Promise<void> {
 
   // Initialize ML execution logger (creates logs_v2/ dir + CSV header)
   await initMlLogger();
+
+  // Initialize settlement logger (creates logs_v2/settlements.csv header)
+  await initSettlementLogger();
 
   // Suppress verbose [CLOB Client] error dumps from Polymarket library
   installClobErrorFilter();
@@ -720,6 +761,7 @@ async function main(): Promise<void> {
   state.coordinator.onEvent(handleCoordinatorEvent);
   state.coordinator.onBtcPrice((update) => {
     state.latestBtcPrice = update;
+    twapRecordTick(update.price, update.ts_local);
     state.volatilityExitManager?.onBtcPriceUpdate(update);
   });
 

@@ -249,6 +249,15 @@ export class KalshiAuth {
   private keySource: string;
   private cachedHeaders: { key: string; promise: Promise<KalshiAuthHeaders>; ts: number } | null = null;
 
+  // Worker-based signing (off main thread)
+  private signerWorker: Worker | null = null;
+  private workerReady = false;
+  private workerMsgId = 0;
+  private pendingWorkerRequests = new Map<number, {
+    resolve: (headers: KalshiAuthHeaders) => void;
+    reject: (err: Error) => void;
+  }>();
+
   /**
    * Create a KalshiAuth instance.
    *
@@ -267,6 +276,81 @@ export class KalshiAuth {
    */
   async init(): Promise<void> {
     this.privateKey = await loadPrivateKey(this.keySource);
+
+    // Try to initialize worker (non-fatal if it fails)
+    try {
+      await this.initWorker();
+    } catch {
+      // Worker init failed — fall back to main-thread signing
+    }
+  }
+
+  /**
+   * Initialize the signer worker thread.
+   */
+  private async initWorker(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      try {
+        this.signerWorker = new Worker(
+          new URL("../../workers/kalshiSigner.worker.ts", import.meta.url).href
+        );
+
+        this.signerWorker.onmessage = (event: MessageEvent) => {
+          const msg = event.data;
+          const pending = this.pendingWorkerRequests.get(msg.id);
+          if (pending) {
+            this.pendingWorkerRequests.delete(msg.id);
+            if (msg.error) {
+              pending.reject(new Error(msg.error));
+            } else if (msg.headers) {
+              pending.resolve(msg.headers);
+            } else if (msg.success) {
+              // init response
+              pending.resolve(msg as any);
+            }
+          }
+        };
+
+        this.signerWorker.onerror = () => {
+          // Worker crashed — disable it
+          this.workerReady = false;
+          this.signerWorker = null;
+        };
+
+        // Send init message
+        const id = ++this.workerMsgId;
+        this.pendingWorkerRequests.set(id, {
+          resolve: () => {
+            this.workerReady = true;
+            resolve();
+          },
+          reject: (err) => {
+            this.signerWorker?.terminate();
+            this.signerWorker = null;
+            reject(err);
+          },
+        });
+
+        this.signerWorker.postMessage({
+          id,
+          type: "init",
+          apiKeyId: this.apiKeyId,
+          keyPem: this.keySource,
+        });
+
+        // Timeout init after 5s
+        setTimeout(() => {
+          if (this.pendingWorkerRequests.has(id)) {
+            this.pendingWorkerRequests.delete(id);
+            this.signerWorker?.terminate();
+            this.signerWorker = null;
+            reject(new Error("Worker init timeout"));
+          }
+        }, 5000);
+      } catch (err) {
+        reject(err);
+      }
+    });
   }
 
   /**
@@ -278,16 +362,59 @@ export class KalshiAuth {
 
   /**
    * Get headers for a REST API request.
+   * Uses worker thread if available, falls back to main thread.
    *
    * @param method - HTTP method
    * @param path - Request path
    * @returns Headers object
    */
   async getHeaders(method: string, path: string): Promise<KalshiAuthHeaders> {
-    if (!this.privateKey) {
+    if (!this.privateKey && !this.workerReady) {
       throw new Error("KalshiAuth not initialized. Call init() first.");
     }
-    return generateAuthHeaders(this.apiKeyId, this.privateKey, method, path);
+
+    // Try worker first (off main thread)
+    if (this.workerReady && this.signerWorker) {
+      try {
+        return await this.signViaWorker(method, path);
+      } catch {
+        // Worker failed — fall back to main thread
+      }
+    }
+
+    return generateAuthHeaders(this.apiKeyId, this.privateKey!, method, path);
+  }
+
+  /**
+   * Sign via the worker thread.
+   */
+  private signViaWorker(method: string, path: string, timestamp?: string): Promise<KalshiAuthHeaders> {
+    return new Promise((resolve, reject) => {
+      const id = ++this.workerMsgId;
+      const timeout = setTimeout(() => {
+        this.pendingWorkerRequests.delete(id);
+        reject(new Error("Worker sign timeout"));
+      }, 3000);
+
+      this.pendingWorkerRequests.set(id, {
+        resolve: (headers) => {
+          clearTimeout(timeout);
+          resolve(headers);
+        },
+        reject: (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        },
+      });
+
+      this.signerWorker!.postMessage({
+        id,
+        type: "sign",
+        method,
+        path,
+        timestamp: timestamp || Date.now().toString(),
+      });
+    });
   }
 
   /**
@@ -329,10 +456,18 @@ export class KalshiAuth {
    * @returns Headers object
    */
   async getWsHeaders(): Promise<KalshiAuthHeaders> {
-    if (!this.privateKey) {
+    if (!this.privateKey && !this.workerReady) {
       throw new Error("KalshiAuth not initialized. Call init() first.");
     }
-    return generateWsAuthHeaders(this.apiKeyId, this.privateKey);
+    // WS auth can also use worker
+    if (this.workerReady && this.signerWorker) {
+      try {
+        return await this.signViaWorker("GET", "/trade-api/ws/v2");
+      } catch {
+        // Fall back
+      }
+    }
+    return generateWsAuthHeaders(this.apiKeyId, this.privateKey!);
   }
 
   /**
@@ -340,6 +475,18 @@ export class KalshiAuth {
    */
   getApiKeyId(): string {
     return this.apiKeyId;
+  }
+
+  /**
+   * Terminate the signer worker. Call on shutdown.
+   */
+  terminateWorker(): void {
+    if (this.signerWorker) {
+      this.signerWorker.terminate();
+      this.signerWorker = null;
+      this.workerReady = false;
+      this.pendingWorkerRequests.clear();
+    }
   }
 }
 

@@ -8,6 +8,7 @@
  */
 
 import type { Venue } from "../strategy/types";
+import { CircularBuffer } from "../utils/circularBuffer";
 
 /**
  * Latency statistics for a specific metric.
@@ -63,27 +64,30 @@ export interface AllLatencyStats {
 }
 
 /**
- * Internal storage for latency samples.
+ * Internal storage for latency samples using CircularBuffer.
  */
 interface LatencySamples {
-  decisionToSubmit: number[];
-  submitToFillPolymarket: number[];
-  submitToFillKalshi: number[];
-  totalExecution: number[];
-  legAToLegB: number[];
-  quoteProcessing: number[];
+  decisionToSubmit: CircularBuffer<number>;
+  submitToFillPolymarket: CircularBuffer<number>;
+  submitToFillKalshi: CircularBuffer<number>;
+  totalExecution: CircularBuffer<number>;
+  legAToLegB: CircularBuffer<number>;
+  quoteProcessing: CircularBuffer<number>;
 }
+
+/** Maximum samples to keep per metric (rolling window) */
+const MAX_SAMPLES = 1000;
 
 /**
  * Metrics state - singleton.
  */
 const samples: LatencySamples = {
-  decisionToSubmit: [],
-  submitToFillPolymarket: [],
-  submitToFillKalshi: [],
-  totalExecution: [],
-  legAToLegB: [],
-  quoteProcessing: [],
+  decisionToSubmit: new CircularBuffer<number>(MAX_SAMPLES),
+  submitToFillPolymarket: new CircularBuffer<number>(MAX_SAMPLES),
+  submitToFillKalshi: new CircularBuffer<number>(MAX_SAMPLES),
+  totalExecution: new CircularBuffer<number>(MAX_SAMPLES),
+  legAToLegB: new CircularBuffer<number>(MAX_SAMPLES),
+  quoteProcessing: new CircularBuffer<number>(MAX_SAMPLES),
 };
 
 const counters: ExecutionCounters = {
@@ -95,29 +99,20 @@ const counters: ExecutionCounters = {
   unwindsSucceeded: 0,
 };
 
-/** Maximum samples to keep per metric (rolling window) */
-const MAX_SAMPLES = 1000;
-
 /**
- * Add a sample to an array, maintaining max size.
+ * Calculate statistics from a CircularBuffer.
  */
-function addSample(arr: number[], value: number): void {
-  arr.push(value);
-  if (arr.length > MAX_SAMPLES) {
-    arr.shift();
-  }
-}
-
-/**
- * Calculate statistics from an array of samples.
- */
-function calculateStats(arr: number[]): LatencyStats {
-  if (arr.length === 0) {
+function calculateStats(buf: CircularBuffer<number>): LatencyStats {
+  if (buf.length === 0) {
     return { min: 0, max: 0, avg: 0, p99: 0, count: 0 };
   }
 
-  const sorted = [...arr].sort((a, b) => a - b);
-  const sum = arr.reduce((acc, val) => acc + val, 0);
+  const arr = buf.toArray();
+  const sorted = arr.sort((a, b) => a - b);
+  let sum = 0;
+  for (let i = 0; i < arr.length; i++) {
+    sum += arr[i];
+  }
   const p99Index = Math.floor(arr.length * 0.99);
 
   return {
@@ -135,7 +130,7 @@ function calculateStats(arr: number[]): LatencyStats {
  * Record time from decision to order submission.
  */
 export function recordDecisionToSubmit(ms: number): void {
-  addSample(samples.decisionToSubmit, ms);
+  samples.decisionToSubmit.push(ms);
 }
 
 /**
@@ -143,9 +138,9 @@ export function recordDecisionToSubmit(ms: number): void {
  */
 export function recordSubmitToFill(venue: Venue, ms: number): void {
   if (venue === "polymarket") {
-    addSample(samples.submitToFillPolymarket, ms);
+    samples.submitToFillPolymarket.push(ms);
   } else {
-    addSample(samples.submitToFillKalshi, ms);
+    samples.submitToFillKalshi.push(ms);
   }
 }
 
@@ -153,21 +148,21 @@ export function recordSubmitToFill(venue: Venue, ms: number): void {
  * Record total execution time.
  */
 export function recordTotalExecution(ms: number): void {
-  addSample(samples.totalExecution, ms);
+  samples.totalExecution.push(ms);
 }
 
 /**
  * Record time between leg A fill and leg B fill.
  */
 export function recordLegAToLegB(ms: number): void {
-  addSample(samples.legAToLegB, ms);
+  samples.legAToLegB.push(ms);
 }
 
 /**
  * Record quote processing tick latency.
  */
 export function recordQuoteProcessing(ms: number): void {
-  addSample(samples.quoteProcessing, ms);
+  samples.quoteProcessing.push(ms);
 }
 
 // === Counter functions ===
@@ -301,12 +296,12 @@ export function getMetricsSummary(): string {
  * Reset all metrics (for testing or new session).
  */
 export function resetMetrics(): void {
-  samples.decisionToSubmit = [];
-  samples.submitToFillPolymarket = [];
-  samples.submitToFillKalshi = [];
-  samples.totalExecution = [];
-  samples.legAToLegB = [];
-  samples.quoteProcessing = [];
+  samples.decisionToSubmit = new CircularBuffer<number>(MAX_SAMPLES);
+  samples.submitToFillPolymarket = new CircularBuffer<number>(MAX_SAMPLES);
+  samples.submitToFillKalshi = new CircularBuffer<number>(MAX_SAMPLES);
+  samples.totalExecution = new CircularBuffer<number>(MAX_SAMPLES);
+  samples.legAToLegB = new CircularBuffer<number>(MAX_SAMPLES);
+  samples.quoteProcessing = new CircularBuffer<number>(MAX_SAMPLES);
 
   counters.opportunitiesDetected = 0;
   counters.executionsAttempted = 0;

@@ -24,6 +24,8 @@ export interface PolymarketMapping {
   slug: string;
   /** End timestamp in Unix seconds */
   endTs: number;
+  /** BTC strike/reference price parsed from market question */
+  referencePrice?: number;
 }
 
 /**
@@ -38,6 +40,8 @@ export interface KalshiMapping {
   seriesTicker: string;
   /** Close timestamp in Unix seconds */
   closeTs: number;
+  /** BTC strike/reference price parsed from event title */
+  referencePrice?: number;
 }
 
 /**
@@ -91,6 +95,11 @@ export class MappingStore {
       discoveredAt: Date.now(),
     };
     this.mappings.set(key, mapping);
+
+    // Auto-prune old mappings to prevent unbounded growth
+    if (this.mappings.size > 10) {
+      this.pruneOldMappings();
+    }
   }
 
   /**

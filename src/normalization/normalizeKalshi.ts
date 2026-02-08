@@ -101,16 +101,13 @@ export function applyKalshiDelta(
 } {
   const { price, delta: deltaQty, side, ts } = delta.msg;
 
-  // Clone arrays to avoid mutation
-  let yesBids = [...currentYesBids];
-  let noBids = [...currentNoBids];
-
-  // Apply delta to the appropriate side
-  if (side === "yes") {
-    yesBids = applyDeltaToLevels(yesBids, price, deltaQty);
-  } else {
-    noBids = applyDeltaToLevels(noBids, price, deltaQty);
-  }
+  // Clone only the modified side to avoid mutation (other side reuses reference)
+  const yesBids = side === "yes"
+    ? applyDeltaToLevels([...currentYesBids], price, deltaQty)
+    : currentYesBids;
+  const noBids = side === "no"
+    ? applyDeltaToLevels([...currentNoBids], price, deltaQty)
+    : currentNoBids;
 
   // Calculate quote from updated bids
   const bestYesBid = getBestBid(yesBids);
@@ -149,43 +146,53 @@ export function applyKalshiDelta(
 }
 
 /**
- * Apply a delta to a sorted price level array.
+ * Apply a delta to a sorted price level array (mutates in place).
  *
  * The array is sorted ascending by price (best bid is last).
+ * Caller should pass a cloned array if immutability is needed.
  *
- * @param levels - Current price levels
+ * Uses binary search for insertion instead of full sort — O(n) splice vs O(n log n) sort.
+ *
+ * @param levels - Current price levels (will be mutated)
  * @param priceCents - Price in cents
  * @param deltaQty - Quantity delta (positive = add, negative = remove)
- * @returns Updated price levels
+ * @returns The mutated price levels array
  */
 function applyDeltaToLevels(
   levels: KalshiPriceLevel[],
   priceCents: number,
   deltaQty: number
 ): KalshiPriceLevel[] {
-  // Find existing level at this price
-  const existingIndex = levels.findIndex(([price]) => price === priceCents);
+  // Binary search for the price level
+  let lo = 0;
+  let hi = levels.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (levels[mid][0] < priceCents) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+
+  const existingIndex = lo < levels.length && levels[lo][0] === priceCents ? lo : -1;
 
   if (existingIndex >= 0) {
     // Update existing level
-    const [price, qty] = levels[existingIndex];
-    const newQty = qty + deltaQty;
+    const newQty = levels[existingIndex][1] + deltaQty;
 
     if (newQty <= 0) {
       // Remove the level
-      return [...levels.slice(0, existingIndex), ...levels.slice(existingIndex + 1)];
+      levels.splice(existingIndex, 1);
     } else {
-      // Update the quantity
-      const result = [...levels];
-      result[existingIndex] = [price, newQty];
-      return result;
+      // Update the quantity in place
+      levels[existingIndex] = [priceCents, newQty];
     }
+    return levels;
   } else if (deltaQty > 0) {
-    // Add new level (need to insert in sorted order)
-    const newLevels = [...levels, [priceCents, deltaQty] as KalshiPriceLevel];
-    // Sort ascending by price
-    newLevels.sort((a, b) => a[0] - b[0]);
-    return newLevels;
+    // Insert new level at the binary search position (maintains sorted order)
+    levels.splice(lo, 0, [priceCents, deltaQty] as KalshiPriceLevel);
+    return levels;
   }
 
   // Delta is negative but no existing level - no change

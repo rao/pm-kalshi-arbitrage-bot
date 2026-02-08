@@ -34,6 +34,8 @@ export interface KalshiMarketRaw {
   volume: number;
   /** Liquidity in cents */
   liquidity: number;
+  /** Settlement result ("yes", "no", or absent if unsettled) */
+  result?: string;
 }
 
 /**
@@ -82,6 +84,8 @@ export interface KalshiEventInfo {
   noPrices: { bid: number; ask: number };
   /** Associated interval key */
   intervalKey: IntervalKey;
+  /** BTC strike/reference price parsed from event title */
+  referencePrice?: number;
 }
 
 /**

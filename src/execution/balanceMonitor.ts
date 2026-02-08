@@ -68,7 +68,7 @@ export function stopBalanceMonitor(): void {
 }
 
 /**
- * Check balances on both venues.
+ * Check balances on both venues in parallel.
  */
 async function checkBalances(
   venueClients: InitializedClients,
@@ -76,34 +76,35 @@ async function checkBalances(
   minBalanceDollars: number,
   onLowBalance: (venue: "polymarket" | "kalshi", balance: number) => void
 ): Promise<void> {
-  // Check Kalshi balance
-  if (venueClients.kalshi) {
-    try {
-      const kalshiBalance = await getKalshiBalance(venueClients);
-      logger.debug(`[BALANCE] Kalshi: $${kalshiBalance.toFixed(2)}`);
+  const [kalshiResult, polyResult] = await Promise.allSettled([
+    venueClients.kalshi ? getKalshiBalance(venueClients) : Promise.resolve(null),
+    venueClients.polymarket ? venueClients.polymarket.getCollateralBalance() : Promise.resolve(null),
+  ]);
 
-      if (kalshiBalance < minBalanceDollars) {
-        logger.warn(`[BALANCE] Kalshi balance LOW: $${kalshiBalance.toFixed(2)} < $${minBalanceDollars}`);
-        onLowBalance("kalshi", kalshiBalance);
-      }
-    } catch (error) {
-      logger.warn(`[BALANCE] Failed to check Kalshi balance: ${error instanceof Error ? error.message : String(error)}`);
+  // Process Kalshi result
+  if (kalshiResult.status === "fulfilled" && kalshiResult.value !== null) {
+    const kalshiBalance = kalshiResult.value;
+    logger.debug(`[BALANCE] Kalshi: $${kalshiBalance.toFixed(2)}`);
+    if (kalshiBalance < minBalanceDollars) {
+      logger.warn(`[BALANCE] Kalshi balance LOW: $${kalshiBalance.toFixed(2)} < $${minBalanceDollars}`);
+      onLowBalance("kalshi", kalshiBalance);
     }
+  } else if (kalshiResult.status === "rejected") {
+    const err = kalshiResult.reason;
+    logger.warn(`[BALANCE] Failed to check Kalshi balance: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  // Check Polymarket balance
-  if (venueClients.polymarket) {
-    try {
-      const polyBalance = await venueClients.polymarket.getCollateralBalance();
-      logger.debug(`[BALANCE] Polymarket: $${polyBalance.toFixed(2)}`);
-
-      if (polyBalance < minBalanceDollars) {
-        logger.warn(`[BALANCE] Polymarket balance LOW: $${polyBalance.toFixed(2)} < $${minBalanceDollars}`);
-        onLowBalance("polymarket", polyBalance);
-      }
-    } catch (error) {
-      logger.warn(`[BALANCE] Failed to check Polymarket balance: ${error instanceof Error ? error.message : String(error)}`);
+  // Process Polymarket result
+  if (polyResult.status === "fulfilled" && polyResult.value !== null) {
+    const polyBalance = polyResult.value;
+    logger.debug(`[BALANCE] Polymarket: $${polyBalance.toFixed(2)}`);
+    if (polyBalance < minBalanceDollars) {
+      logger.warn(`[BALANCE] Polymarket balance LOW: $${polyBalance.toFixed(2)} < $${minBalanceDollars}`);
+      onLowBalance("polymarket", polyBalance);
     }
+  } else if (polyResult.status === "rejected") {
+    const err = polyResult.reason;
+    logger.warn(`[BALANCE] Failed to check Polymarket balance: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 

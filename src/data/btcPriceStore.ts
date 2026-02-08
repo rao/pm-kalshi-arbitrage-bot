@@ -6,6 +6,8 @@
  * for the current interval.
  */
 
+import { CircularBuffer } from "../utils/circularBuffer";
+
 /** Price entry in the rolling buffer. */
 interface PriceEntry {
   price: number;
@@ -28,7 +30,7 @@ const MAX_HISTORY = 500;
 // --- Module state ---
 
 let referencePrice: number | null = null;
-let priceHistory: PriceEntry[] = [];
+let priceHistory = new CircularBuffer<PriceEntry>(MAX_HISTORY);
 let crossingCount = 0;
 let intervalHigh = -Infinity;
 let intervalLow = Infinity;
@@ -41,11 +43,8 @@ let currentIntervalKey: string | null = null;
  * Record a BTC price tick. Updates analytics and detects reference crossings.
  */
 export function recordPrice(price: number, ts: number): void {
-  // Add to rolling buffer
+  // Add to rolling buffer — O(1), overwrites oldest when full
   priceHistory.push({ price, ts });
-  if (priceHistory.length > MAX_HISTORY) {
-    priceHistory = priceHistory.slice(-MAX_HISTORY);
-  }
 
   // Update range
   if (price > intervalHigh) intervalHigh = price;
@@ -67,7 +66,7 @@ export function recordPrice(price: number, ts: number): void {
  */
 export function resetForInterval(intervalKey?: string): void {
   referencePrice = null;
-  priceHistory = [];
+  priceHistory = new CircularBuffer<PriceEntry>(MAX_HISTORY);
   crossingCount = 0;
   intervalHigh = -Infinity;
   intervalLow = Infinity;
@@ -81,9 +80,9 @@ export function resetForInterval(intervalKey?: string): void {
 export function setReferencePrice(price: number): void {
   referencePrice = price;
   // Initialize lastSide based on current latest price
-  if (priceHistory.length > 0) {
-    const latest = priceHistory[priceHistory.length - 1].price;
-    lastSide = latest >= price ? "above" : "below";
+  const latest = priceHistory.last();
+  if (latest) {
+    lastSide = latest.price >= price ? "above" : "below";
   }
 }
 
@@ -98,9 +97,8 @@ export function getReferencePrice(): number | null {
  * Get analytics snapshot.
  */
 export function getAnalytics(): BtcPriceAnalytics {
-  const latestPrice = priceHistory.length > 0
-    ? priceHistory[priceHistory.length - 1].price
-    : null;
+  const latest = priceHistory.last();
+  const latestPrice = latest ? latest.price : null;
 
   const rangeUsd = intervalHigh > -Infinity && intervalLow < Infinity
     ? intervalHigh - intervalLow
@@ -131,8 +129,8 @@ export function getCurrentSide(): "above" | "below" | null {
  * Get the latest BTC price from the store.
  */
 export function getLatestPrice(): number | null {
-  if (priceHistory.length === 0) return null;
-  return priceHistory[priceHistory.length - 1].price;
+  const latest = priceHistory.last();
+  return latest ? latest.price : null;
 }
 
 /**
