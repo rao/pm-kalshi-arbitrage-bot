@@ -13,6 +13,7 @@ import type { Opportunity } from "../strategy/types";
 import type { EdgeResult } from "../fees/edge";
 import { getMetricsSummary, getCounters } from "./metrics";
 import { getDailyPnl, getUnrealizedPnl, getDailyUnwindLoss } from "../execution/executionState";
+import { logBtcPriceToFile } from "./fileLogger";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -67,6 +68,12 @@ export interface Logger {
   /** Stop periodic execution metrics logging */
   stopMetricsInterval(): void;
 
+  /** Start periodic BTC price file logging */
+  startBtcPriceInterval(intervalMs: number, getPriceFn: () => number | null): void;
+
+  /** Stop periodic BTC price file logging */
+  stopBtcPriceInterval(): void;
+
   /** Get current quote stats */
   getQuoteStats(): QuoteStats;
 
@@ -100,6 +107,7 @@ export function createLogger(level: LogLevel = "info"): Logger {
   const minLevel = LOG_LEVEL_VALUES[level];
   let statusIntervalId: ReturnType<typeof setInterval> | null = null;
   let metricsIntervalId: ReturnType<typeof setInterval> | null = null;
+  let btcPriceIntervalId: ReturnType<typeof setInterval> | null = null;
   let lastComputedEdge: EdgeResult | null = null;
 
   const stats: QuoteStats = {
@@ -254,6 +262,23 @@ export function createLogger(level: LogLevel = "info"): Logger {
       if (metricsIntervalId) {
         clearInterval(metricsIntervalId);
         metricsIntervalId = null;
+      }
+    },
+
+    startBtcPriceInterval(intervalMs: number, getPriceFn: () => number | null) {
+      if (btcPriceIntervalId) return;
+      btcPriceIntervalId = setInterval(() => {
+        const price = getPriceFn();
+        if (price !== null) {
+          logBtcPriceToFile(price).catch(() => {});
+        }
+      }, intervalMs);
+    },
+
+    stopBtcPriceInterval() {
+      if (btcPriceIntervalId) {
+        clearInterval(btcPriceIntervalId);
+        btcPriceIntervalId = null;
       }
     },
 

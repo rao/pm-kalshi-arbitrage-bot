@@ -183,9 +183,6 @@ async function placePolymarketOrder(
     const filled = response.success === true && orderId !== null;
     const matched = response.status === "matched";
 
-    // Log submission + response together (deferred from pre-submission for latency)
-    console.log(`[POLYMARKET] ${orderTypeLabel} order: success=${response.success}, status=${response.status}, orderId=${orderId?.substring(0, 20) ?? "N/A"}...`);
-
     // Compute fill qty and price from response amounts
     let fillQty = 0;
     let actualFillPrice = effectivePrice; // fallback to limit price
@@ -206,18 +203,14 @@ async function placePolymarketOrder(
 
       if (isFakOrder) {
         // FAK: fillQty from amounts is authoritative (may be partial)
-        console.log(`[POLYMARKET] FAK fill: ${fillQty.toFixed(2)} tokens @ $${actualFillPrice.toFixed(4)} (requested ${params.qty})`);
       } else {
         // FOK: full fill expected, use params.qty but log if amounts differ
         if (Math.abs(fillQty - params.qty) > 0.01) {
-          console.log(`[POLYMARKET] FOK fill qty from amounts (${fillQty.toFixed(2)}) differs from requested (${params.qty})`);
+          console.warn(`[POLYMARKET] FOK fill qty from amounts (${fillQty.toFixed(2)}) differs from requested (${params.qty})`);
         }
         fillQty = params.qty; // FOK: assume full fill
       }
 
-      if (Math.abs(actualFillPrice - effectivePrice) > 0.001) {
-        console.log(`[POLYMARKET] Actual fill price: $${actualFillPrice.toFixed(4)} (limit was $${effectivePrice.toFixed(2)})`);
-      }
     } else if (filled) {
       // No amounts in response — fallback
       fillQty = isFakOrder ? 0 : params.qty; // FAK with no amounts = treat as 0 fill
@@ -340,9 +333,6 @@ async function placeKalshiOrder(
     // Submit order
     const response = await kalshiCreateOrder(clients.auth, request);
 
-    // Log submission + response together (deferred from pre-submission for latency)
-    console.log(`[KALSHI] ${isMarketOrder ? "MARKET" : "LIMIT"} order: ticker=${request.ticker}, side=${request.side}, action=${request.action}, count=${request.count}, status=${response.order.status}`);
-
     // Check fill status
     const order = response.order;
     const isIOC = params.timeInForce === "IOC";
@@ -387,11 +377,10 @@ async function placeKalshiOrder(
             filled = true;
             fillQty = totalFillQty;
             fillPrice = totalCost / totalFillQty;
-            console.log(`[KALSHI] IOC fill confirmed via Fills API: ${fillQty}/${params.qty} contracts @ $${fillPrice.toFixed(4)} (${fillsResponse.fills.length} fills)`);
           }
         }
         if (!filled) {
-          console.log(`[KALSHI] IOC order: no fills detected (order response: ${responseFillQty}/${params.qty}, Fills API: 0 fills)`);
+          // No fills detected — covered by execution summary
         }
       } catch (fillsError) {
         console.warn(`[KALSHI] Failed to query Fills API for IOC order, using order response data: ${fillsError instanceof Error ? fillsError.message : String(fillsError)}`);
@@ -433,7 +422,6 @@ async function placeKalshiOrder(
               }
               if (totalQty > 0) {
                 fillPrice = totalCost / totalQty;
-                console.log(`[KALSHI] Actual fill price from fills API: $${fillPrice.toFixed(4)} (${fillsResponse.fills.length} fills)`);
               }
             }
           } catch (fillsError) {
@@ -454,8 +442,6 @@ async function placeKalshiOrder(
       filledAt: filled ? Date.now() : null,
       error: filled ? null : `Order status: ${order.status}`,
     };
-
-    console.log(`[KALSHI] Result: success=${result.success}, status=${result.status}, fillQty=${result.fillQty}, fillPrice=$${result.fillPrice.toFixed(4)}`);
 
     return result;
   } catch (error) {

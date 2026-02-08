@@ -434,6 +434,7 @@ async function shutdown(): Promise<void> {
   state.logger.info("Shutting down...");
   state.logger.stopStatusInterval();
   state.logger.stopMetricsInterval();
+  state.logger.stopBtcPriceInterval();
   stopBalanceMonitor();
   stopPositionReconciler();
 
@@ -739,6 +740,7 @@ async function main(): Promise<void> {
 
   try {
     await state.coordinator.start();
+    state.logger.startBtcPriceInterval(15000, () => state.latestBtcPrice?.price ?? null);
     state.logger.info("Bot is running. Press Ctrl+C to stop.");
 
     // Keep process alive
