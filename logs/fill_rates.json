@@ -236,5 +236,22 @@
     "avgSpreadAtDetection": 0.026896551724137928,
     "totalPnl": 21.570722599999996,
     "lastUpdated": 1770524029765
+  },
+  "1770525000-1770525900": {
+    "interval": "1770525000-1770525900",
+    "intervalDisplay": "04:30-04:45 UTC",
+    "hourOfDay": 4,
+    "attempts": 31,
+    "polyFills": 17,
+    "polyMisses": 14,
+    "kalshiFills": 12,
+    "kalshiMisses": 5,
+    "partialFills": 2,
+    "avgPolyLatencyMs": 575.4705882352941,
+    "avgKalshiLatencyMs": 153.76470588235293,
+    "avgEdgeNet": 0.21928064516129034,
+    "avgSpreadAtDetection": 0.02322580645161291,
+    "totalPnl": 82.49893940000001,
+    "lastUpdated": 1770525899754
   }
 }

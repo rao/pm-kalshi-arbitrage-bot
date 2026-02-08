@@ -75,7 +75,7 @@ export const RISK_PARAMS = {
   /** Enable volatility-based position exit */
   volatilityExitEnabled: true,
   /** Min BTC reference crossings to trigger */
-  volatilityExitCrossingThreshold: 2,
+  volatilityExitCrossingThreshold: 3,
   /** Min BTC range (USD) within interval to trigger */
   volatilityExitRangeThresholdUsd: 100,
   /** Min profit per contract to sell a side (bid - entry) */
