@@ -65,6 +65,7 @@ import {
 } from "./execution/volatilityExitManager";
 import { resetForInterval as resetBtcPriceStore } from "./data/btcPriceStore";
 import { initMlLogger } from "./logging/mlLogger";
+import { installClobErrorFilter } from "./logging/clobErrorFilter";
 
 /**
  * Quote cache - maintains latest quote per venue.
@@ -518,6 +519,9 @@ async function main(): Promise<void> {
 
   // Initialize ML execution logger (creates logs_v2/ dir + CSV header)
   await initMlLogger();
+
+  // Suppress verbose [CLOB Client] error dumps from Polymarket library
+  installClobErrorFilter();
 
   state.logger.info("Starting arb bot...");
   state.logger.info(`Mode: ${config.dryRun ? "DRY RUN" : "LIVE"}`);

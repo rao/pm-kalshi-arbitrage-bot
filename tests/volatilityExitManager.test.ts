@@ -720,4 +720,310 @@ describe("VolatilityExitManager", () => {
     });
   });
 
+  describe("re-entrancy guard", () => {
+    test("concurrent onBtcPriceUpdate calls: only first processes", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      recordFill("polymarket", "yes", "buy", 5, 0.40, intervalKey, "fill1", "up-token-123");
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: (msg: string) => logs.push(msg),
+            warn: (msg: string) => logs.push(msg),
+            error: (msg: string) => logs.push(msg),
+          } as any,
+          getMsUntilRollover: () => 300000, // in monitoring window
+        })
+      );
+
+      // First call sets reference — starts processing
+      const p1 = manager.onBtcPriceUpdate(makeUpdate(100000));
+      // Second call fires concurrently — should be dropped
+      const p2 = manager.onBtcPriceUpdate(makeUpdate(100001));
+      const p3 = manager.onBtcPriceUpdate(makeUpdate(100002));
+
+      await Promise.all([p1, p2, p3]);
+
+      // Only one "Reference price set" log should appear
+      const refLogs = logs.filter((l) => l.includes("Reference price set"));
+      expect(refLogs.length).toBe(1);
+      expect(refLogs[0]).toContain("100000"); // first tick's price
+    });
+
+    test("_processing resets after error", async () => {
+      const manager = new VolatilityExitManager(createMockDeps());
+
+      // Force an error by setting MONITORING state without valid conditions
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      // This should complete without hanging
+      await manager.onBtcPriceUpdate(makeUpdate(100000));
+
+      // _processing should be false after completion
+      expect((manager as any)._processing).toBe(false);
+    });
+
+    test("_processing resets on resetForInterval", () => {
+      const manager = new VolatilityExitManager(createMockDeps());
+      (manager as any)._processing = true;
+
+      manager.resetForInterval();
+
+      expect((manager as any)._processing).toBe(false);
+    });
+
+    test("_processing resets on stop", () => {
+      const manager = new VolatilityExitManager(createMockDeps());
+      (manager as any)._processing = true;
+
+      manager.stop();
+
+      expect((manager as any)._processing).toBe(false);
+    });
+  });
+
+  describe("API-based position fetching", () => {
+    test("buildSellTargets uses fetchApiPositions dep override", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      // Record local positions (will be overridden by API)
+      recordFill("polymarket", "yes", "buy", 5, 0.40, intervalKey, "fill1", "up-token-123");
+      recordFill("kalshi", "no", "buy", 5, 0.40, intervalKey, "fill2", "KXBTC-100000");
+
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);
+      recordPrice(99940, now + 1);
+      recordPrice(100050, now + 2);
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: () => {},
+            warn: (msg: string) => logs.push(`WARN: ${msg}`),
+            error: (msg: string) => logs.push(`ERROR: ${msg}`),
+          } as any,
+          dryRun: true,
+          getMsUntilRollover: () => 300000,
+          // API says Polymarket has 10 YES (not 5 like local tracker)
+          fetchApiPositions: async () => ({
+            polymarket: { yes: 10, no: 0 },
+            kalshi: { yes: 0, no: 8 },
+          }),
+        })
+      );
+
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Should have sold with API-reported quantities
+      // DRY RUN logs show the qty
+      const dryRunLogs = logs.filter((l) => l.includes("DRY RUN"));
+      // One of the dry run logs should contain qty=10 or qty=8 (from API, not 5 from local)
+      const hasApiQty = dryRunLogs.some((l) => l.includes("10") || l.includes("8"));
+      expect(hasApiQty).toBe(true);
+    });
+
+    test("buildSellTargets falls back to local positions when no API dep", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      recordFill("polymarket", "yes", "buy", 5, 0.40, intervalKey, "fill1", "up-token-123");
+      recordFill("kalshi", "no", "buy", 5, 0.40, intervalKey, "fill2", "KXBTC-100000");
+
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);
+      recordPrice(99940, now + 1);
+      recordPrice(100050, now + 2);
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: () => {},
+            warn: (msg: string) => logs.push(`WARN: ${msg}`),
+            error: (msg: string) => logs.push(`ERROR: ${msg}`),
+          } as any,
+          dryRun: true,
+          getMsUntilRollover: () => 300000,
+          // No fetchApiPositions override — will use local
+          // No venue clients either, so API fetches will skip
+        })
+      );
+
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Should have used local qty=5
+      const dryRunLogs = logs.filter((l) => l.includes("DRY RUN"));
+      expect(dryRunLogs.some((l) => l.includes("5"))).toBe(true);
+    });
+  });
+
+  describe("partial sell retry", () => {
+    test("retries after partial fill with lower price", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      recordFill("kalshi", "no", "buy", 10, 0.40, intervalKey, "fill1", "KXBTC-100000");
+
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);
+      recordPrice(99940, now + 1);
+      recordPrice(100050, now + 2);
+
+      let kalshiCallCount = 0;
+      // First call: partial fill (7/10), second call: fill remaining 3
+      mockKalshiCreateOrder.mockImplementation(async () => {
+        kalshiCallCount++;
+        if (kalshiCallCount === 1) {
+          return { order: { count: 10, remaining_count: 3 } }; // 7 filled
+        }
+        return { order: { count: 3, remaining_count: 0 } }; // 3 filled
+      });
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: () => {},
+            warn: (msg: string) => logs.push(`WARN: ${msg}`),
+            error: (msg: string) => logs.push(`ERROR: ${msg}`),
+          } as any,
+          dryRun: false,
+          getMsUntilRollover: () => 30000, // emergency zone so it sells regardless of profit
+          venueClients: {
+            polymarket: null,
+            kalshi: { auth: { token: "t", keyId: "k" } } as any,
+          },
+          fetchApiPositions: async () => ({
+            polymarket: { yes: 0, no: 0 },
+            kalshi: { yes: 0, no: 10 },
+          }),
+        })
+      );
+
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Should see partial fill + retry logs
+      expect(logs.some((l) => l.includes("Partial fill: 7/10"))).toBe(true);
+      expect(logs.some((l) => l.includes("Retry 1 filled 3"))).toBe(true);
+      expect(logs.some((l) => l.includes("First sell complete: 10"))).toBe(true);
+    });
+
+    test("stops retrying after no-fill retry", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      recordFill("kalshi", "no", "buy", 10, 0.40, intervalKey, "fill1", "KXBTC-100000");
+
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);
+      recordPrice(99940, now + 1);
+      recordPrice(100050, now + 2);
+
+      let kalshiCallCount = 0;
+      mockKalshiCreateOrder.mockImplementation(async () => {
+        kalshiCallCount++;
+        if (kalshiCallCount === 1) {
+          return { order: { count: 10, remaining_count: 5 } }; // 5 filled
+        }
+        return { order: { count: 5, remaining_count: 5 } }; // 0 filled on retry
+      });
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: () => {},
+            warn: (msg: string) => logs.push(`WARN: ${msg}`),
+            error: (msg: string) => logs.push(`ERROR: ${msg}`),
+          } as any,
+          dryRun: false,
+          getMsUntilRollover: () => 30000,
+          venueClients: {
+            polymarket: null,
+            kalshi: { auth: { token: "t", keyId: "k" } } as any,
+          },
+          fetchApiPositions: async () => ({
+            polymarket: { yes: 0, no: 0 },
+            kalshi: { yes: 0, no: 10 },
+          }),
+        })
+      );
+
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Should see partial fill then retry stop
+      expect(logs.some((l) => l.includes("Partial fill: 5/10"))).toBe(true);
+      expect(logs.some((l) => l.includes("Retry 1 got no fill"))).toBe(true);
+      // Still reports the partial as the first sell
+      expect(logs.some((l) => l.includes("First sell complete: 5"))).toBe(true);
+    });
+
+    test("full fill does not trigger retries", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      recordFill("kalshi", "no", "buy", 10, 0.40, intervalKey, "fill1", "KXBTC-100000");
+
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);
+      recordPrice(99940, now + 1);
+      recordPrice(100050, now + 2);
+
+      let kalshiCallCount = 0;
+      mockKalshiCreateOrder.mockImplementation(async () => {
+        kalshiCallCount++;
+        return { order: { count: 10, remaining_count: 0 } }; // full fill
+      });
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: () => {},
+            warn: (msg: string) => logs.push(`WARN: ${msg}`),
+            error: (msg: string) => logs.push(`ERROR: ${msg}`),
+          } as any,
+          dryRun: false,
+          getMsUntilRollover: () => 30000,
+          venueClients: {
+            polymarket: null,
+            kalshi: { auth: { token: "t", keyId: "k" } } as any,
+          },
+          fetchApiPositions: async () => ({
+            polymarket: { yes: 0, no: 0 },
+            kalshi: { yes: 0, no: 10 },
+          }),
+        })
+      );
+
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Should NOT see partial fill log
+      expect(logs.some((l) => l.includes("Partial fill"))).toBe(false);
+      // Only 1 kalshi call (no retries)
+      expect(kalshiCallCount).toBe(1);
+      expect(logs.some((l) => l.includes("First sell complete: 10"))).toBe(true);
+    });
+  });
+
 });

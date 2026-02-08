@@ -121,9 +121,16 @@ export async function createOrder(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(
-      `Kalshi createOrder failed (${response.status}): ${errorText}`
-    );
+    let code = String(response.status);
+    let message = errorText;
+    try {
+      const parsed = JSON.parse(errorText);
+      if (parsed.error) {
+        code = parsed.error.code || code;
+        message = parsed.error.message || errorText;
+      }
+    } catch {}
+    throw new Error(`${message} (${code})`);
   }
 
   return response.json() as Promise<KalshiCreateOrderResponse>;

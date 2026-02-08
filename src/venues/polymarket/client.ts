@@ -171,7 +171,7 @@ export class PolymarketClient {
         makingAmount: response.makingAmount,
       };
     } catch (error) {
-      console.error(`[POLYMARKET] FOK order failed:`, error);
+      console.error(`[Polymarket Order Error] ${error instanceof Error ? error.message : String(error)}`);
       return {
         success: false,
         orderId: null,
@@ -221,7 +221,7 @@ export class PolymarketClient {
         makingAmount: response.makingAmount,
       };
     } catch (error) {
-      console.error(`[POLYMARKET] FAK order failed:`, error);
+      console.error(`[Polymarket Order Error] ${error instanceof Error ? error.message : String(error)}`);
       return {
         success: false,
         orderId: null,
@@ -271,7 +271,7 @@ export class PolymarketClient {
         status: response.status,
       };
     } catch (error) {
-      console.error(`[POLYMARKET] GTC order failed:`, error);
+      console.error(`[Polymarket Order Error] ${error instanceof Error ? error.message : String(error)}`);
       return {
         success: false,
         orderId: null,

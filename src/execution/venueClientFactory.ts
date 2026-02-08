@@ -240,7 +240,7 @@ async function placePolymarketOrder(
       error: actuallyFilled ? null : (response.errorMsg || "Order not filled"),
     };
   } catch (error) {
-    console.error(`[POLYMARKET] Order failed:`, error);
+    console.error(`[Polymarket Order Error] ${error instanceof Error ? error.message : String(error)}`);
     return {
       success: false,
       orderId: null,
@@ -459,7 +459,7 @@ async function placeKalshiOrder(
 
     return result;
   } catch (error) {
-    console.error(`[KALSHI] Order failed:`, error);
+    console.error(`[Kalshi Order Error] ${error instanceof Error ? error.message : String(error)}`);
     return {
       success: false,
       orderId: null,

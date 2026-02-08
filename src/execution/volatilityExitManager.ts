@@ -17,7 +17,7 @@ import type { NormalizedQuote } from "../normalization/types";
 import type { Venue, Side } from "../strategy/types";
 import type { BtcPriceUpdate } from "../venues/polymarket/rtds";
 import { Side as PolySide } from "../venues/polymarket/client";
-import { createOrder as kalshiCreateOrder } from "../venues/kalshi/orders";
+import { createOrder as kalshiCreateOrder, getPortfolioPositions as kalshiGetPositions } from "../venues/kalshi/orders";
 import type { KalshiOrderRequest } from "../venues/kalshi/types";
 import { RISK_PARAMS } from "../config/riskParams";
 import { msUntilRollover, getIntervalKey } from "../time/interval";
@@ -57,6 +57,11 @@ export interface VolatilityExitDeps {
   dryRun: boolean;
   /** Override msUntilRollover for testing. */
   getMsUntilRollover?: () => number;
+  /** Override API position fetching for testing. */
+  fetchApiPositions?: () => Promise<{
+    polymarket: { yes: number; no: number };
+    kalshi: { yes: number; no: number };
+  }>;
 }
 
 interface SellTarget {
@@ -77,6 +82,7 @@ interface SellTarget {
 export class VolatilityExitManager {
   private deps: VolatilityExitDeps;
   private state: VolatilityExitState = "IDLE";
+  private _processing = false;
   private referenceSet = false;
   private secondSellStartTs: number | null = null;
   private pendingSecondTarget: SellTarget | null = null;
@@ -131,35 +137,41 @@ export class VolatilityExitManager {
    * Feeds price to btcPriceStore and drives the state machine.
    */
   async onBtcPriceUpdate(update: BtcPriceUpdate): Promise<void> {
-    // 1. Set reference price from first tick of interval
-    if (!this.referenceSet) {
-      setReferencePrice(update.price);
-      this.referenceSet = true;
-      this.deps.logger.debug(
-        `[VOL-EXIT] Reference price set: $${update.price.toFixed(2)}`
-      );
-    }
+    if (this._processing) return;
+    this._processing = true;
+    try {
+      // 1. Set reference price from first tick of interval
+      if (!this.referenceSet) {
+        setReferencePrice(update.price);
+        this.referenceSet = true;
+        this.deps.logger.debug(
+          `[VOL-EXIT] Reference price set: $${update.price.toFixed(2)}`
+        );
+      }
 
-    // 2. Feed to btcPriceStore
-    recordPrice(update.price, update.ts_local);
+      // 2. Feed to btcPriceStore
+      recordPrice(update.price, update.ts_local);
 
-    // 3. State machine
-    if (!RISK_PARAMS.volatilityExitEnabled) return;
+      // 3. State machine
+      if (!RISK_PARAMS.volatilityExitEnabled) return;
 
-    switch (this.state) {
-      case "IDLE":
-        this.checkTransitionToMonitoring();
-        break;
+      switch (this.state) {
+        case "IDLE":
+          this.checkTransitionToMonitoring();
+          break;
 
-      case "MONITORING":
-        await this.checkTrigger();
-        break;
+        case "MONITORING":
+          await this.checkTrigger();
+          break;
 
-      case "SELLING_SECOND":
-        await this.checkSecondSell();
-        break;
+        case "SELLING_SECOND":
+          await this.checkSecondSell();
+          break;
 
-      // SELLING_FIRST and DONE: no per-tick action needed
+        // SELLING_FIRST and DONE: no per-tick action needed
+      }
+    } finally {
+      this._processing = false;
     }
   }
 
@@ -168,6 +180,7 @@ export class VolatilityExitManager {
    */
   resetForInterval(): void {
     this.state = "IDLE";
+    this._processing = false;
     this.referenceSet = false;
     this.secondSellStartTs = null;
     this.pendingSecondTarget = null;
@@ -182,6 +195,7 @@ export class VolatilityExitManager {
    */
   stop(): void {
     this.state = "IDLE";
+    this._processing = false;
     this.secondSellStartTs = null;
     this.pendingSecondTarget = null;
     this.lastFailedTriggerTs = null;
@@ -233,7 +247,7 @@ export class VolatilityExitManager {
     );
 
     // Determine sell order
-    const targets = this.buildSellTargets();
+    const targets = await this.buildSellTargets();
     if (targets.length === 0) {
       this.deps.logger.info("[VOL-EXIT] No sellable positions found, returning to IDLE");
       this.state = "IDLE";
@@ -274,7 +288,7 @@ export class VolatilityExitManager {
           `${target.venue} ${target.side} qty=${target.qty}`
       );
 
-      soldQty = await this.executeSell(target);
+      soldQty = await this.executeSellWithRetries(target);
       if (soldQty > 0) {
         firstSoldTarget = target;
         this.firstSoldQty = soldQty;
@@ -365,7 +379,7 @@ export class VolatilityExitManager {
         );
       }
 
-      const soldQty = await this.executeSell(target);
+      const soldQty = await this.executeSellWithRetries(target);
       if (soldQty > 0) {
         this.deps.logger.info(
           `[VOL-EXIT] Second sell complete: ${soldQty} ${target.venue} ${target.side}`
@@ -400,8 +414,74 @@ export class VolatilityExitManager {
     }
   }
 
-  private buildSellTargets(): SellTarget[] {
-    const positions = getPositions();
+  /**
+   * Fetch actual positions from venue APIs, falling back to local tracker per-venue on failure.
+   */
+  private async fetchApiPositionsFromVenues(): Promise<{
+    polymarket: { yes: number; no: number };
+    kalshi: { yes: number; no: number };
+  }> {
+    // Use dep override if provided (for testing)
+    if (this.deps.fetchApiPositions) {
+      return this.deps.fetchApiPositions();
+    }
+
+    const mapping = this.deps.getCurrentMapping();
+    const localPositions = getPositions();
+    let polymarket = { yes: localPositions.polymarket.yes, no: localPositions.polymarket.no };
+    let kalshi = { yes: localPositions.kalshi.yes, no: localPositions.kalshi.no };
+
+    // Fetch Polymarket positions from API
+    if (this.deps.venueClients.polymarket && mapping?.polymarket) {
+      try {
+        const [yesBalance, noBalance] = await Promise.all([
+          this.deps.venueClients.polymarket.getConditionalTokenBalance(mapping.polymarket.upToken),
+          this.deps.venueClients.polymarket.getConditionalTokenBalance(mapping.polymarket.downToken),
+        ]);
+        polymarket = { yes: yesBalance, no: noBalance };
+        this.deps.logger.info(
+          `[VOL-EXIT] API positions Polymarket: yes=${yesBalance.toFixed(2)}, no=${noBalance.toFixed(2)}`
+        );
+      } catch (error) {
+        this.deps.logger.warn(
+          `[VOL-EXIT] Failed to fetch Polymarket positions, using local: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+
+    // Fetch Kalshi positions from API
+    if (this.deps.venueClients.kalshi && mapping?.kalshi) {
+      try {
+        const response = await kalshiGetPositions(this.deps.venueClients.kalshi.auth, {
+          ticker: mapping.kalshi.marketTicker,
+        });
+        let yes = 0;
+        let no = 0;
+        for (const pos of response.market_positions) {
+          if (pos.ticker === mapping.kalshi.marketTicker) {
+            if (pos.position > 0) {
+              yes = pos.position;
+            } else if (pos.position < 0) {
+              no = Math.abs(pos.position);
+            }
+          }
+        }
+        kalshi = { yes, no };
+        this.deps.logger.info(
+          `[VOL-EXIT] API positions Kalshi: yes=${yes}, no=${no}`
+        );
+      } catch (error) {
+        this.deps.logger.warn(
+          `[VOL-EXIT] Failed to fetch Kalshi positions, using local: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+
+    return { polymarket, kalshi };
+  }
+
+  private async buildSellTargets(): Promise<SellTarget[]> {
+    const positions = await this.fetchApiPositionsFromVenues();
     const mapping = this.deps.getCurrentMapping();
     const intervalKey = getIntervalKey();
     const targets: SellTarget[] = [];
@@ -467,6 +547,36 @@ export class VolatilityExitManager {
     return this.deps.getMsUntilRollover
       ? this.deps.getMsUntilRollover()
       : msUntilRollover();
+  }
+
+  /**
+   * Execute a sell with retries for partial fills.
+   * If the first attempt partially fills, retry remaining qty at progressively lower prices.
+   */
+  private async executeSellWithRetries(target: SellTarget, maxRetries = 2): Promise<number> {
+    let totalSold = await this.executeSell(target);
+    if (totalSold > 0 && totalSold < target.qty) {
+      this.deps.logger.info(
+        `[VOL-EXIT] Partial fill: ${totalSold}/${target.qty}, retrying remaining`
+      );
+      const retryTarget = { ...target, qty: Math.floor(target.qty - totalSold) };
+      for (let i = 0; i < maxRetries && retryTarget.qty > 0; i++) {
+        retryTarget.currentBid -= RISK_PARAMS.volatilityExitSellPriceOffset;
+        await new Promise((r) => setTimeout(r, 300));
+        const retrySold = await this.executeSell(retryTarget);
+        if (retrySold > 0) {
+          totalSold += retrySold;
+          retryTarget.qty = Math.floor(retryTarget.qty - retrySold);
+          this.deps.logger.info(
+            `[VOL-EXIT] Retry ${i + 1} filled ${retrySold}, total=${totalSold}/${target.qty}`
+          );
+        } else {
+          this.deps.logger.warn(`[VOL-EXIT] Retry ${i + 1} got no fill, stopping retries`);
+          break;
+        }
+      }
+    }
+    return totalSold;
   }
 
   private async executeSell(target: SellTarget): Promise<number> {
