@@ -28,7 +28,8 @@ export type ExecutionLogType =
   | "KILL_SWITCH"
   | "COOLDOWN"
   | "ERROR"
-  | "STATE";
+  | "STATE"
+  | "BTC_PRICE";
 
 /**
  * Structured log entry for file logging.
@@ -266,6 +267,13 @@ export async function logStateToFile(data: {
   killSwitchTriggered: boolean;
 }): Promise<void> {
   await logEntry("STATE", data);
+}
+
+/**
+ * Log BTC price to file.
+ */
+export async function logBtcPriceToFile(price: number): Promise<void> {
+  await logEntry("BTC_PRICE", { price });
 }
 
 // === Buffered writes for high-frequency logging ===

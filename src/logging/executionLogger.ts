@@ -93,23 +93,12 @@ export function logOpportunityDetected(
 
 /**
  * Log execution start.
+ * Console output removed — folded into logExecutionComplete summary line.
  */
 export function logExecutionStart(record: ExecutionRecord): void {
   const intervalStr = formatIntervalKey(record.opportunity.intervalKey);
 
-  // Console output
-  console.log("");
-  console.log(`[${formatTimestamp()}] EXECUTION START id=${record.id}`);
-  console.log(`  Interval: ${intervalStr}`);
-  console.log(`  Expected edge: ${formatDollars(record.expectedEdgeNet)}`);
-  console.log(
-    `  Leg A: ${record.legA.params.venue.toUpperCase()} ${record.legA.params.side.toUpperCase()} @ ${formatPrice(record.legA.params.price)}`
-  );
-  console.log(
-    `  Leg B: ${record.legB.params.venue.toUpperCase()} ${record.legB.params.side.toUpperCase()} @ ${formatPrice(record.legB.params.price)}`
-  );
-
-  // File output
+  // File output only
   logExecutionStartToFile({
     executionId: record.id,
     intervalKey: intervalStr,
@@ -129,19 +118,14 @@ export function logExecutionStart(record: ExecutionRecord): void {
 
 /**
  * Log leg submission.
+ * Console output removed — folded into logExecutionComplete summary line.
  */
 export function logLegSubmit(
   executionId: string,
   leg: "A" | "B",
   params: OrderParams
 ): void {
-  // Console output
-  console.log(
-    `[${formatTimestamp()}] LEG ${leg} SUBMIT -> ${params.venue.toUpperCase()} ${params.timeInForce} ` +
-      `${params.side.toUpperCase()} @ ${formatPrice(params.price)} x${params.qty}`
-  );
-
-  // File output
+  // File output only
   logLegSubmitToFile({
     executionId,
     leg,
@@ -155,6 +139,7 @@ export function logLegSubmit(
 
 /**
  * Log leg fill result.
+ * Console output removed — folded into logExecutionComplete summary line.
  */
 export function logLegResult(
   executionId: string,
@@ -163,14 +148,7 @@ export function logLegResult(
   latencyMs: number
 ): void {
   if (result.success) {
-    // Console output
-    console.log(
-      `[${formatTimestamp()}] LEG ${leg} FILLED in ${latencyMs}ms | ` +
-        `orderId=${result.orderId?.substring(0, 16) ?? "N/A"}... ` +
-        `@ ${formatPrice(result.fillPrice)} x${result.fillQty}`
-    );
-
-    // File output
+    // File output only
     logLegFillToFile({
       executionId,
       leg,
@@ -181,13 +159,7 @@ export function logLegResult(
       latencyMs,
     }).catch(() => {});
   } else {
-    // Console output
-    console.log(
-      `[${formatTimestamp()}] LEG ${leg} FAILED (${result.status}) | ` +
-        `${result.error ?? "no error details"}`
-    );
-
-    // File output
+    // File output only
     logLegFailToFile({
       executionId,
       leg,
@@ -225,6 +197,7 @@ export function logUnwindStart(
 
 /**
  * Log unwind result.
+ * Console output removed — folded into logExecutionComplete summary line.
  */
 export function logUnwindResult(
   executionId: string,
@@ -232,23 +205,7 @@ export function logUnwindResult(
 ): void {
   const success = unwind.result?.success ?? false;
 
-  if (success) {
-    // Console output
-    console.log(
-      `[${formatTimestamp()}] UNWIND COMPLETE | ` +
-        `Sold @ ${formatPrice(unwind.result?.fillPrice ?? 0)} | ` +
-        `Loss: $${unwind.realizedLoss.toFixed(4)}`
-    );
-  } else {
-    // Console output
-    console.log(
-      `[${formatTimestamp()}] UNWIND FAILED | ` +
-        `Error: ${unwind.result?.error ?? "unknown"} | ` +
-        `Assumed loss: $${unwind.realizedLoss.toFixed(4)}`
-    );
-  }
-
-  // File output
+  // File output only
   logUnwindResultToFile({
     executionId,
     success,
@@ -256,6 +213,79 @@ export function logUnwindResult(
     realizedLoss: unwind.realizedLoss,
     error: unwind.result?.error ?? undefined,
   }).catch(() => {});
+}
+
+/**
+ * Short venue label for summary line.
+ */
+function venueShort(venue: string): string {
+  return venue === "polymarket" ? "POLY" : "KALSHI";
+}
+
+/**
+ * Build concise one-line execution summary.
+ */
+function buildExecutionSummary(record: ExecutionRecord): string {
+  const ts = formatTimestamp();
+  const idShort = record.id.replace("exec_", "");
+  const edge = `$${record.expectedEdgeNet.toFixed(4)}`;
+
+  const totalLatency = record.endTs ? record.endTs - record.startTs : 0;
+
+  // Leg A segment
+  const legA = record.legA;
+  const legALatency = legA.fillTs && legA.submitTs ? legA.fillTs - legA.submitTs : totalLatency;
+  const legAVenue = venueShort(legA.params.venue);
+  const legATif = legA.params.timeInForce;
+  const legASide = legA.params.side.toUpperCase();
+  const legAPrice = legA.params.price.toFixed(2);
+  const legAQty = legA.params.qty;
+
+  let legAStr: string;
+  if (legA.result?.success) {
+    legAStr = `A: ${legAVenue} ${legATif} ${legASide}@${legAPrice} x${legAQty} -> FILLED@${legA.result.fillPrice.toFixed(4)} (${legALatency}ms)`;
+  } else {
+    const reason = legA.result?.status?.toUpperCase() ?? "REJECTED";
+    legAStr = `A: ${legAVenue} ${legATif} ${legASide}@${legAPrice} x${legAQty} -> ${reason} (${legALatency}ms)`;
+  }
+
+  // Leg B segment (only if attempted)
+  let legBStr = "";
+  const legB = record.legB;
+  if (legB.result) {
+    const legBLatency = legB.fillTs && legB.submitTs ? legB.fillTs - legB.submitTs : 0;
+    const legBVenue = venueShort(legB.params.venue);
+    const legBTif = legB.params.timeInForce;
+    const legBSide = legB.params.side.toUpperCase();
+    const legBPrice = legB.params.price.toFixed(2);
+    const legBQty = legB.params.qty;
+
+    if (legB.result.success) {
+      legBStr = ` | B: ${legBVenue} ${legBTif} ${legBSide}@${legBPrice} x${legBQty} -> FILLED@${legB.result.fillPrice.toFixed(4)} (${legBLatency}ms)`;
+    } else {
+      const reason = legB.result.status?.toUpperCase() ?? "REJECTED";
+      legBStr = ` | B: ${legBVenue} ${legBTif} ${legBSide}@${legBPrice} x${legBQty} -> ${reason} (${legBLatency}ms)`;
+    }
+  }
+
+  // Unwind segment
+  let unwindStr = "";
+  if (record.unwind) {
+    const uw = record.unwind;
+    if (uw.result?.success) {
+      unwindStr = ` | UNWIND sold@${uw.result.fillPrice.toFixed(2)} loss=$${uw.realizedLoss.toFixed(4)}`;
+    } else {
+      unwindStr = ` | UNWIND FAILED loss=$${uw.realizedLoss.toFixed(4)}`;
+    }
+  }
+
+  // PnL segment (only for success)
+  let pnlStr = "";
+  if (record.status === "success" && record.realizedPnl !== null) {
+    pnlStr = ` | PnL=${formatDollars(record.realizedPnl)} (${totalLatency}ms)`;
+  }
+
+  return `[${ts}] EXEC ${idShort} | edge=${edge} | ${legAStr}${legBStr}${unwindStr}${pnlStr}`;
 }
 
 /**
@@ -278,18 +308,8 @@ export function logExecutionComplete(record: ExecutionRecord): void {
 
   const success = record.status === "success";
 
-  // Console output
-  console.log("");
-  console.log(`[${formatTimestamp()}] EXECUTION COMPLETE`);
-  console.log(`  Status: ${record.status.toUpperCase()}`);
-  console.log(
-    `  PnL: ${record.realizedPnl !== null ? formatDollars(record.realizedPnl) : "N/A"} ` +
-      `(expected: ${formatDollars(record.expectedEdgeNet)})`
-  );
-  console.log(
-    `  Latency: A=${legALatency}ms B=${legBLatency ?? "N/A"}ms Total=${totalLatency}ms`
-  );
-  console.log("");
+  // Console output: concise one-liner
+  console.log(buildExecutionSummary(record));
 
   // File output
   logExecutionCompleteToFile({

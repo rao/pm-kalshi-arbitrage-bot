@@ -457,7 +457,6 @@ export async function executeOpportunity(
     }
 
     // === Deferred work: logging + state updates after both orders sent ===
-    console.log(`[EXECUTOR] Polymarket IOC filled: ${polyFillQty} tokens. Kalshi target: ${kalshiFillQty} contracts.`);
     recordFill(
       legAParams.venue,
       legAParams.side,
