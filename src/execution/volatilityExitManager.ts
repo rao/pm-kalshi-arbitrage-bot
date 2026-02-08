@@ -15,7 +15,7 @@ import type { InitializedClients } from "./venueClientFactory";
 import type { IntervalMapping } from "../markets/mappingStore";
 import type { NormalizedQuote } from "../normalization/types";
 import type { Venue, Side } from "../strategy/types";
-import type { BtcPriceUpdate } from "../venues/polymarket/rtds";
+import type { BtcPriceUpdate } from "../data/binanceWs";
 import { Side as PolySide } from "../venues/polymarket/client";
 import { createOrder as kalshiCreateOrder, getPortfolioPositions as kalshiGetPositions } from "../venues/kalshi/orders";
 import type { KalshiOrderRequest } from "../venues/kalshi/types";

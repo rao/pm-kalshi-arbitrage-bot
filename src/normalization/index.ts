@@ -31,5 +31,4 @@ export {
   initializeBidsFromSnapshot,
   computeQuoteFromBids,
   validateKalshiQuote,
-  convertPriceLevels,
 } from "./normalizeKalshi";

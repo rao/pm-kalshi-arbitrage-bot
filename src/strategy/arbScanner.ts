@@ -250,24 +250,3 @@ export function scanForArbitrage(context: ScanContext): ScanResult {
   };
 }
 
-/**
- * Format a scan result for logging.
- */
-export function formatScanResult(result: ScanResult): string {
-  if (result.opportunity) {
-    const opp = result.opportunity;
-    return (
-      `[OPPORTUNITY] ${opp.reason}\n` +
-      `  Cost: ${opp.cost.toFixed(3)}, Gross: ${opp.edgeGross.toFixed(3)}, Net: ${opp.edgeNet.toFixed(3)}`
-    );
-  }
-
-  if (result.computedEdge) {
-    return (
-      `[NO ARB] ${result.reason}\n` +
-      `  Edge: gross=${result.computedEdge.edgeGross.toFixed(3)}, net=${result.computedEdge.edgeNet.toFixed(3)}`
-    );
-  }
-
-  return `[NO ARB] ${result.reason}`;
-}

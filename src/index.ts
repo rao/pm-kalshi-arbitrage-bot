@@ -25,7 +25,7 @@ import {
   type OrderCancellationCallbacks,
 } from "./data/marketDataCoordinator";
 import type { QuoteUpdateEvent, NormalizedQuote } from "./normalization/types";
-import type { BtcPriceUpdate } from "./venues/polymarket/rtds";
+import type { BtcPriceUpdate } from "./data/binanceWs";
 import type { IntervalKey } from "./time/interval";
 import { formatIntervalKey, getIntervalKey } from "./time/interval";
 import { getFeeBuffer } from "./fees/feeEngine";

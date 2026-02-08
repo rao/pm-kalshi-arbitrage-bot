@@ -12,7 +12,20 @@
  */
 
 import type { ConnectionState, ConnectionStateCallback } from "../normalization/types";
-import type { BtcPriceUpdate, BtcPriceCallback } from "../venues/polymarket/rtds";
+
+/** BTC price update from WebSocket feed. */
+export interface BtcPriceUpdate {
+  /** Symbol (e.g., "btcusdt") */
+  symbol: string;
+  /** BTC price in USD */
+  price: number;
+  /** Exchange timestamp (ms) */
+  ts_exchange: number;
+  /** Local receive timestamp (ms) */
+  ts_local: number;
+}
+
+export type BtcPriceCallback = (update: BtcPriceUpdate) => void;
 
 /** Default Binance Futures aggTrade WebSocket URL. */
 export const BINANCE_AGGTRADE_URL = "wss://fstream.binance.com/ws/btcusdt@aggTrade";

@@ -60,17 +60,3 @@ export function computeEdge(
   };
 }
 
-/**
- * Format edge result for logging.
- *
- * @param result - Edge calculation result
- * @returns Formatted string
- */
-export function formatEdge(result: EdgeResult): string {
-  return (
-    `cost=${result.cost.toFixed(3)} ` +
-    `gross=${result.edgeGross.toFixed(3)} ` +
-    `net=${result.edgeNet.toFixed(3)} ` +
-    `profitable=${result.profitable}`
-  );
-}

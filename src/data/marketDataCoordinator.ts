@@ -28,7 +28,7 @@ import {
   BinanceWsClient,
   type BinanceWsClientOptions,
 } from "./binanceWs";
-import type { BtcPriceUpdate, BtcPriceCallback } from "../venues/polymarket/rtds";
+import type { BtcPriceUpdate, BtcPriceCallback } from "./binanceWs";
 
 /**
  * Coordinator events for external monitoring.

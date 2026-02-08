@@ -31,18 +31,6 @@ export {
   type FillRecord,
 } from "./positionTracker";
 
-// Reconciliation
-export {
-  checkUnhedgedExposure,
-  isUnhedgedTimeExceeded,
-  getUnhedgedDuration,
-  resetUnhedgedTracking,
-  checkMaxOpenOrders,
-  getReconciliationStatus,
-  type UnhedgedDetails,
-  type UnhedgedCheckResult,
-} from "./reconciliation";
-
 // Position reconciler (background venue API reconciliation)
 export {
   startPositionReconciler,

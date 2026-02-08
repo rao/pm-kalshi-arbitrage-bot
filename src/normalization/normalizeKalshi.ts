@@ -12,7 +12,7 @@
  * - A bid to buy NO is an implied ask to sell YES
  */
 
-import type { NormalizedQuote, PriceLevel } from "./types";
+import type { NormalizedQuote } from "./types";
 import {
   type KalshiOrderbookSnapshot,
   type KalshiOrderbookDelta,
@@ -26,18 +26,6 @@ import {
  */
 export function centsToDecimal(cents: number): number {
   return kalshiCentsToDecimal(cents);
-}
-
-/**
- * Convert Kalshi price levels to our PriceLevel format.
- *
- * Kalshi levels are [price_cents, quantity] sorted ascending.
- */
-export function convertPriceLevels(levels: KalshiPriceLevel[]): PriceLevel[] {
-  return levels.map(([priceCents, size]) => ({
-    price: centsToDecimal(priceCents),
-    size,
-  }));
 }
 
 /**
