@@ -64,6 +64,7 @@ import {
   setActiveVolatilityExitManager,
 } from "./execution/volatilityExitManager";
 import { resetForInterval as resetBtcPriceStore } from "./data/btcPriceStore";
+import { initMlLogger } from "./logging/mlLogger";
 
 /**
  * Quote cache - maintains latest quote per venue.
@@ -514,6 +515,9 @@ async function main(): Promise<void> {
   const config = loadConfig();
   state.config = config;
   state.logger = createLogger(config.logLevel);
+
+  // Initialize ML execution logger (creates logs_v2/ dir + CSV header)
+  await initMlLogger();
 
   state.logger.info("Starting arb bot...");
   state.logger.info(`Mode: ${config.dryRun ? "DRY RUN" : "LIVE"}`);

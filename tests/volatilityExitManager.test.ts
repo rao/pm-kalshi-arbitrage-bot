@@ -514,4 +514,5 @@ describe("VolatilityExitManager", () => {
       expect((manager as any).lastFailedTriggerTs).toBeNull();
     });
   });
+
 });

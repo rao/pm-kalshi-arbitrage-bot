@@ -82,8 +82,10 @@ export const RISK_PARAMS = {
   volatilityExitMinProfitPerShare: 0.02,
   /** Only activate in last N ms of interval (7.5 min = 450000) */
   volatilityExitWindowMs: 450000,
-  /** Max wait for second side to become profitable (ms) */
-  volatilityExitSecondSellTimeoutMs: 120000,
+  /** Above this time-to-rollover, require full minProfitPerShare (patient zone) (ms) */
+  volatilityExitPatientThresholdMs: 120000,
+  /** Above this (but below patient), accept breakeven; below = emergency force sell (ms) */
+  volatilityExitBreakevenThresholdMs: 60000,
   /** Halt all trading in last N ms if volatile (1 min = 60000) */
   volatilityHaltWindowMs: 60000,
   /** Sell price offset below bid (1 tick) */

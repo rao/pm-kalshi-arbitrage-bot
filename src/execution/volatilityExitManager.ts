@@ -54,6 +54,8 @@ export interface VolatilityExitDeps {
   getCurrentMapping: () => IntervalMapping | null;
   getQuote: (venue: Venue) => NormalizedQuote | null;
   dryRun: boolean;
+  /** Override msUntilRollover for testing. */
+  getMsUntilRollover?: () => number;
 }
 
 interface SellTarget {
@@ -113,7 +115,7 @@ export class VolatilityExitManager {
   shouldHaltTrading(): boolean {
     if (!RISK_PARAMS.volatilityExitEnabled) return false;
 
-    const msLeft = msUntilRollover();
+    const msLeft = this.getMsUntilRollover();
     if (msLeft > RISK_PARAMS.volatilityHaltWindowMs) return false;
 
     const analytics = getAnalytics();
@@ -190,7 +192,7 @@ export class VolatilityExitManager {
   private checkTransitionToMonitoring(): void {
     if (!hasAnyPosition()) return;
 
-    const msLeft = msUntilRollover();
+    const msLeft = this.getMsUntilRollover();
     if (msLeft > RISK_PARAMS.volatilityExitWindowMs) return;
 
     this.state = "MONITORING";
@@ -317,20 +319,36 @@ export class VolatilityExitManager {
       target.profitability = target.currentBid - target.entryVwap;
     }
 
-    // Check if profitable enough to sell
-    const isProfitable =
-      target.profitability >= RISK_PARAMS.volatilityExitMinProfitPerShare;
-    const timedOut = elapsed >= RISK_PARAMS.volatilityExitSecondSellTimeoutMs;
+    // Dynamic zone based on time-to-rollover
+    const msLeft = this.getMsUntilRollover();
+    let zone: "patient" | "breakeven" | "emergency";
+    let shouldSell = false;
 
-    if (isProfitable || timedOut) {
-      if (timedOut && !isProfitable) {
+    if (msLeft < RISK_PARAMS.volatilityExitBreakevenThresholdMs) {
+      zone = "emergency";
+      shouldSell = true; // Force sell at any price
+    } else if (msLeft < RISK_PARAMS.volatilityExitPatientThresholdMs) {
+      zone = "breakeven";
+      shouldSell = target.profitability >= 0; // Accept any non-negative
+    } else {
+      zone = "patient";
+      shouldSell = target.profitability >= RISK_PARAMS.volatilityExitMinProfitPerShare;
+    }
+
+    if (shouldSell) {
+      if (zone === "emergency") {
         this.deps.logger.warn(
-          `[VOL-EXIT] Second sell TIMEOUT (${Math.round(elapsed / 1000)}s), ` +
-            `selling at loss: profit=${target.profitability.toFixed(4)}`
+          `[VOL-EXIT] EMERGENCY sell (${Math.round(msLeft / 1000)}s left, ${Math.round(elapsed / 1000)}s elapsed), ` +
+            `profit=${target.profitability.toFixed(4)}`
+        );
+      } else if (zone === "breakeven") {
+        this.deps.logger.info(
+          `[VOL-EXIT] Breakeven zone sell (${Math.round(msLeft / 1000)}s left): ${target.venue} ${target.side} ` +
+            `profit=${target.profitability.toFixed(4)}`
         );
       } else {
         this.deps.logger.info(
-          `[VOL-EXIT] Second sell profitable: ${target.venue} ${target.side} ` +
+          `[VOL-EXIT] Patient zone sell: ${target.venue} ${target.side} ` +
             `profit=${target.profitability.toFixed(4)}`
         );
       }
@@ -348,6 +366,14 @@ export class VolatilityExitManager {
       this.pendingSecondTarget = null;
       this.secondSellStartTs = null;
       this.deps.logger.info("[VOL-EXIT] Exit complete");
+    } else {
+      // Log zone status periodically (every ~5s based on BTC tick frequency)
+      if (Math.round(elapsed / 1000) % 5 === 0 && elapsed > 0) {
+        this.deps.logger.debug(
+          `[VOL-EXIT] Waiting in ${zone} zone (${Math.round(msLeft / 1000)}s left, ${Math.round(elapsed / 1000)}s elapsed): ` +
+            `${target.venue} ${target.side} profit=${target.profitability.toFixed(4)}`
+        );
+      }
     }
   }
 
@@ -412,6 +438,12 @@ export class VolatilityExitManager {
 
   private getBidFromQuote(side: Side, quote: NormalizedQuote): number {
     return side === "yes" ? quote.yes_bid : quote.no_bid;
+  }
+
+  private getMsUntilRollover(): number {
+    return this.deps.getMsUntilRollover
+      ? this.deps.getMsUntilRollover()
+      : msUntilRollover();
   }
 
   private async executeSell(target: SellTarget): Promise<number> {

@@ -75,6 +75,7 @@ import {
   getPositions,
 } from "../state";
 import { recordFillAttempt } from "../logging/fillTracker";
+import { logExecutionToCsv } from "../logging/mlLogger";
 
 
 /**
@@ -376,6 +377,7 @@ export async function executeOpportunity(
       legB.result = null; // Leg B never submitted
       incrementExecutions(false);
       logExecutionComplete(record);
+      logExecutionToCsv(record, context);
 
       // Track fill attempt (post-execution, zero latency impact)
       const spreadAtDetection = (
@@ -718,6 +720,7 @@ function handleBothFilled(
   });
 
   logExecutionComplete(record);
+  logExecutionToCsv(record, context);
 
   // Post-execution position verification
   const postPositions = getPositions();
@@ -805,6 +808,7 @@ async function handleParallelUnwind(
   recordUnwindLoss(Math.abs(realizedLoss));
 
   logExecutionComplete(record);
+  logExecutionToCsv(record, context);
 
   // If unwind failed (all retries exhausted), trigger kill switch - we have unhedged exposure
   const unwindFailed = !(unwindRecord.result?.success);
