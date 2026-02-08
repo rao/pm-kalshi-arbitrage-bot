@@ -320,14 +320,14 @@ async function placeKalshiOrder(
       request.no_price = priceInCents;
     }
 
-    // Set reduce_only to prevent creating short positions during unwinds
-    // Kalshi only allows reduce_only on IOC orders (not market or FOK)
-    if (params.reduceOnly && params.timeInForce === "IOC") {
+    // Kalshi only allows reduce_only on IOC orders (not market or FOK).
+    // If caller requested market + reduceOnly, downgrade to IOC limit at the
+    // already-set aggressive price (1c sell / 99c buy) — same fill behavior.
+    if (params.reduceOnly) {
       request.reduce_only = true;
-    }
-
-    // Set time_in_force for limit orders only
-    if (!isMarketOrder) {
+      request.type = "limit";
+      request.time_in_force = "immediate_or_cancel";
+    } else if (!isMarketOrder) {
       if (params.timeInForce === "FOK") {
         request.time_in_force = "fill_or_kill";
       } else if (params.timeInForce === "IOC") {

@@ -187,6 +187,18 @@ export class VolatilityExitManager {
   }
 
   /**
+   * Pre-set the reference price (e.g., from historical data on mid-interval startup).
+   * Prevents the first WS tick from overwriting with a stale price.
+   */
+  setInitialReferencePrice(price: number): void {
+    setReferencePrice(price);
+    this.referenceSet = true;
+    this.deps.logger.info(
+      `[VOL-EXIT] Reference price pre-seeded from interval start: $${price.toFixed(2)}`
+    );
+  }
+
+  /**
    * Reset for a new interval.
    */
   resetForInterval(): void {

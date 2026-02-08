@@ -64,6 +64,7 @@ import {
   setActiveVolatilityExitManager,
 } from "./execution/volatilityExitManager";
 import { resetForInterval as resetBtcPriceStore } from "./data/btcPriceStore";
+import { fetchIntervalStartPrice } from "./data/fetchIntervalStartPrice";
 import { initMlLogger } from "./logging/mlLogger";
 import { installClobErrorFilter } from "./logging/clobErrorFilter";
 
@@ -644,6 +645,22 @@ async function main(): Promise<void> {
     });
     setActiveVolatilityExitManager(state.volatilityExitManager);
     state.logger.info("[VOL-EXIT] Volatility exit manager initialized");
+
+    // If starting mid-interval, fetch the actual BTC price at interval start
+    // so vol-exit reference price is accurate (not whatever price WS gives us first)
+    const currentInterval = getIntervalKey();
+    const elapsedMs = Date.now() - currentInterval.startTs * 1000;
+
+    if (elapsedMs > 10_000) {
+      try {
+        const startPrice = await fetchIntervalStartPrice(currentInterval.startTs);
+        if (startPrice !== null) {
+          state.volatilityExitManager.setInitialReferencePrice(startPrice);
+        }
+      } catch (e) {
+        state.logger.warn(`[STARTUP] Failed to fetch interval start price: ${e}`);
+      }
+    }
   }
 
   // Create discovery (determines venues based on available API keys)
