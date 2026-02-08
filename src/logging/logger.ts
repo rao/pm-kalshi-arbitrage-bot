@@ -11,7 +11,7 @@
 import type { NormalizedQuote, QuoteUpdateEvent } from "../normalization/types";
 import type { Opportunity } from "../strategy/types";
 import type { EdgeResult } from "../fees/edge";
-import { getMetricsSummary, getCounters } from "./metrics";
+import { getMetricsSummary, getCounters, getLatencyStats } from "./metrics";
 import { getDailyPnl, getUnrealizedPnl, getDailyUnwindLoss } from "../execution/executionState";
 import { logBtcPriceToFile } from "./fileLogger";
 
@@ -225,6 +225,20 @@ export function createLogger(level: LogLevel = "info"): Logger {
         `  P&L: Arb=$${arbPnl.toFixed(2)} (pending=$${pending.toFixed(2)} + settled=$${settled.toFixed(2)}), ` +
           `Losses=$${unwindLoss.toFixed(2)}`
       );
+
+      // Heap memory usage
+      const mem = process.memoryUsage();
+      console.log(
+        `  Memory: heap ${(mem.heapUsed / 1024 / 1024).toFixed(1)}MB / ${(mem.heapTotal / 1024 / 1024).toFixed(1)}MB`
+      );
+
+      // Tick health from quote processing latency
+      const tickStats = getLatencyStats().quoteProcessing;
+      if (tickStats.count > 0) {
+        console.log(
+          `  Tick health: avg=${tickStats.avg.toFixed(1)}ms, p99=${tickStats.p99.toFixed(1)}ms (n=${tickStats.count})`
+        );
+      }
 
       console.log("");
 

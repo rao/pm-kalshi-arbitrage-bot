@@ -58,6 +58,8 @@ export interface AllLatencyStats {
   totalExecution: LatencyStats;
   /** Time between leg A fill and leg B fill */
   legAToLegB: LatencyStats;
+  /** Quote processing tick latency */
+  quoteProcessing: LatencyStats;
 }
 
 /**
@@ -69,6 +71,7 @@ interface LatencySamples {
   submitToFillKalshi: number[];
   totalExecution: number[];
   legAToLegB: number[];
+  quoteProcessing: number[];
 }
 
 /**
@@ -80,6 +83,7 @@ const samples: LatencySamples = {
   submitToFillKalshi: [],
   totalExecution: [],
   legAToLegB: [],
+  quoteProcessing: [],
 };
 
 const counters: ExecutionCounters = {
@@ -159,6 +163,13 @@ export function recordLegAToLegB(ms: number): void {
   addSample(samples.legAToLegB, ms);
 }
 
+/**
+ * Record quote processing tick latency.
+ */
+export function recordQuoteProcessing(ms: number): void {
+  addSample(samples.quoteProcessing, ms);
+}
+
 // === Counter functions ===
 
 /**
@@ -204,6 +215,7 @@ export function getLatencyStats(): AllLatencyStats {
     },
     totalExecution: calculateStats(samples.totalExecution),
     legAToLegB: calculateStats(samples.legAToLegB),
+    quoteProcessing: calculateStats(samples.quoteProcessing),
   };
 }
 
@@ -274,6 +286,14 @@ export function getMetricsSummary(): string {
     );
   }
 
+  if (stats.quoteProcessing.count > 0) {
+    lines.push(
+      `Quote Processing: avg=${stats.quoteProcessing.avg.toFixed(1)}, ` +
+        `p99=${stats.quoteProcessing.p99.toFixed(1)}, ` +
+        `n=${stats.quoteProcessing.count}`
+    );
+  }
+
   return lines.join("\n");
 }
 
@@ -286,6 +306,7 @@ export function resetMetrics(): void {
   samples.submitToFillKalshi = [];
   samples.totalExecution = [];
   samples.legAToLegB = [];
+  samples.quoteProcessing = [];
 
   counters.opportunitiesDetected = 0;
   counters.executionsAttempted = 0;

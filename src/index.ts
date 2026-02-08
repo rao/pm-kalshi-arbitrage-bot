@@ -58,7 +58,7 @@ import {
 } from "./logging/executionLogger";
 import { getPositions, clearPositionsForInterval, setCurrentInterval } from "./state";
 import { startPositionReconciler, stopPositionReconciler } from "./state/positionReconciler";
-import { incrementOpportunities, getMetricsSummary } from "./logging/metrics";
+import { incrementOpportunities, getMetricsSummary, recordQuoteProcessing } from "./logging/metrics";
 import {
   VolatilityExitManager,
   setActiveVolatilityExitManager,
@@ -283,6 +283,8 @@ function createOrderCancellationCallbacks(): OrderCancellationCallbacks {
  * Handle quote update from WebSocket.
  */
 async function handleQuoteUpdate(event: QuoteUpdateEvent): Promise<void> {
+  const tickStart = performance.now();
+
   // Track quote for stats
   state.logger.trackQuote(event);
 
@@ -323,6 +325,8 @@ async function handleQuoteUpdate(event: QuoteUpdateEvent): Promise<void> {
     // New behavior: attempt execution (handles DRY_RUN internally)
     await attemptExecution(scanResult.opportunity);
   }
+
+  recordQuoteProcessing(performance.now() - tickStart);
 }
 
 /**
