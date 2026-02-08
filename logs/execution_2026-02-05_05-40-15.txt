@@ -1,0 +1,4 @@
+[2026-02-05T05:45:07.800Z] [EXECUTION_START] {"executionId":"exec_ml918fkn_fvwi54","intervalKey":"05:45-06:00 UTC","expectedEdgeNet":0.39399999999999996,"legA":{"venue":"polymarket","side":"no","price":0.001},"legB":{"venue":"kalshi","side":"yes","price":0.55}}
+[2026-02-05T05:45:07.800Z] [LEG_SUBMIT] {"executionId":"exec_ml918fkn_fvwi54","leg":"A","venue":"polymarket","side":"no","price":0.001,"qty":1,"clientOrderId":"polymarket_A_ml918fkn_y4n4"}
+[2026-02-05T05:45:08.220Z] [LEG_FAIL] {"executionId":"exec_ml918fkn_fvwi54","leg":"A","venue":"polymarket","reason":"rejected","error":"invalid price (0.001), min: 0.01 - max: 0.99"}
+[2026-02-05T05:45:08.220Z] [EXECUTION_COMPLETE] {"executionId":"exec_ml918fkn_fvwi54","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":421,"legALatencyMs":0,"legBLatencyMs":null}

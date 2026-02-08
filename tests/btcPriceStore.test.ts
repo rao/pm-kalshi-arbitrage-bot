@@ -8,6 +8,7 @@ import {
   getCurrentSide,
   getLatestPrice,
   resetStore,
+  resetCrossingCount,
 } from "../src/data/btcPriceStore";
 
 describe("btcPriceStore", () => {
@@ -152,6 +153,44 @@ describe("btcPriceStore", () => {
       expect(getAnalytics().crossingCount).toBe(0);
       expect(getAnalytics().rangeUsd).toBe(0);
       expect(getAnalytics().sampleCount).toBe(0);
+    });
+  });
+
+  describe("resetCrossingCount", () => {
+    test("resets crossing count but preserves range and reference", () => {
+      setReferencePrice(100000);
+      recordPrice(100050, 1000); // above
+      recordPrice(99950, 1001);  // below — cross 1
+      recordPrice(100050, 1002); // above — cross 2
+
+      expect(getAnalytics().crossingCount).toBe(2);
+      expect(getAnalytics().rangeUsd).toBe(100); // 100050 - 99950
+
+      resetCrossingCount();
+
+      const analytics = getAnalytics();
+      expect(analytics.crossingCount).toBe(0);
+      expect(analytics.currentSide).toBeNull(); // lastSide reset
+      expect(analytics.referencePrice).toBe(100000); // preserved
+      expect(analytics.rangeUsd).toBe(100); // preserved
+      expect(analytics.sampleCount).toBe(3); // preserved
+    });
+
+    test("first tick after reset does not count as crossing", () => {
+      setReferencePrice(100000);
+      recordPrice(100050, 1000); // above
+      recordPrice(99950, 1001);  // below — cross 1
+
+      resetCrossingCount();
+
+      // Next tick should establish side without counting as crossing
+      recordPrice(100050, 1002); // above — but lastSide was null, so no crossing
+      expect(getAnalytics().crossingCount).toBe(0);
+      expect(getCurrentSide()).toBe("above");
+
+      // Now a real crossing
+      recordPrice(99950, 1003); // below — cross 1 (post-reset)
+      expect(getAnalytics().crossingCount).toBe(1);
     });
   });
 

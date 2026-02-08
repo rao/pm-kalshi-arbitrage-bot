@@ -1,0 +1,22 @@
+[2026-02-06T01:00:14.062Z] [LEG_SUBMIT] {"executionId":"exec_mla6hwmm_blj3mh","leg":"A","venue":"polymarket","side":"no","price":0.45,"qty":5,"clientOrderId":"polymarket_A_mla6hwmm_9auv"}
+[2026-02-06T01:00:14.062Z] [EXECUTION_START] {"executionId":"exec_mla6hwmm_blj3mh","intervalKey":"01:00-01:15 UTC","expectedEdgeNet":0.04499999999999998,"legA":{"venue":"polymarket","side":"no","price":0.45},"legB":{"venue":"kalshi","side":"yes","price":0.45}}
+[2026-02-06T01:00:15.892Z] [LEG_FILL] {"executionId":"exec_mla6hwmm_blj3mh","leg":"A","venue":"polymarket","orderId":"0x198a25b1bb9c0ef984e8f3241b962156d3bce4d2e932ed9b66d6048fd3995dda","fillQty":5,"fillPrice":0.45,"latencyMs":1829}
+[2026-02-06T01:00:15.892Z] [LEG_SUBMIT] {"executionId":"exec_mla6hwmm_blj3mh","leg":"B","venue":"kalshi","side":"yes","price":0.45,"qty":5,"clientOrderId":"kalshi_B_mla6hwmm_68ws"}
+[2026-02-06T01:00:16.237Z] [LEG_FILL] {"executionId":"exec_mla6hwmm_blj3mh","leg":"B","venue":"kalshi","orderId":"2f3336d6-80a1-4ee2-b105-dfb6ee5aa3fb","fillQty":5,"fillPrice":0.45,"latencyMs":345}
+[2026-02-06T01:00:16.250Z] [LEG_SUBMIT] {"executionId":"exec_mla6hybd_7da20g","leg":"A","venue":"polymarket","side":"no","price":0.42,"qty":5,"clientOrderId":"polymarket_A_mla6hybd_i4ak"}
+[2026-02-06T01:00:16.250Z] [EXECUTION_START] {"executionId":"exec_mla6hybd_7da20g","intervalKey":"01:00-01:15 UTC","expectedEdgeNet":0.07500000000000001,"legA":{"venue":"polymarket","side":"no","price":0.42},"legB":{"venue":"kalshi","side":"yes","price":0.45}}
+[2026-02-06T01:00:16.244Z] [EXECUTION_COMPLETE] {"executionId":"exec_mla6hwmm_blj3mh","status":"success","success":true,"realizedPnl":0.5,"latencyMs":2175,"legALatencyMs":1829,"legBLatencyMs":345}
+[2026-02-06T01:00:17.272Z] [LEG_FILL] {"executionId":"exec_mla6hybd_7da20g","leg":"A","venue":"polymarket","orderId":"0x8440f73a4f405337901dac28402c8b47d1ce53a77971a1ac4bb25502fb98dbd9","fillQty":5,"fillPrice":0.42,"latencyMs":1022}
+[2026-02-06T01:00:17.272Z] [LEG_SUBMIT] {"executionId":"exec_mla6hybd_7da20g","leg":"B","venue":"kalshi","side":"yes","price":0.45,"qty":5,"clientOrderId":"kalshi_B_mla6hybd_sytd"}
+[2026-02-06T01:00:17.608Z] [LEG_FILL] {"executionId":"exec_mla6hybd_7da20g","leg":"B","venue":"kalshi","orderId":"1b9dcfbe-a2c3-40d1-b273-445e542f932d","fillQty":5,"fillPrice":0.45,"latencyMs":336}
+[2026-02-06T01:00:17.608Z] [EXECUTION_COMPLETE] {"executionId":"exec_mla6hybd_7da20g","status":"success","success":true,"realizedPnl":0.6500000000000004,"latencyMs":1359,"legALatencyMs":1022,"legBLatencyMs":336}
+[2026-02-06T01:00:17.613Z] [LEG_SUBMIT] {"executionId":"exec_mla6hzd8_6rtu5x","leg":"A","venue":"polymarket","side":"no","price":0.4,"qty":5,"clientOrderId":"polymarket_A_mla6hzd8_pg9a"}
+[2026-02-06T01:00:17.613Z] [EXECUTION_START] {"executionId":"exec_mla6hzd8_6rtu5x","intervalKey":"01:00-01:15 UTC","expectedEdgeNet":0.09499999999999992,"legA":{"venue":"polymarket","side":"no","price":0.4},"legB":{"venue":"kalshi","side":"yes","price":0.45}}
+[2026-02-06T01:02:17.965Z] [LEG_FILL] {"executionId":"exec_mla6hzd8_6rtu5x","leg":"A","venue":"polymarket","orderId":"0x526842b9b1285b1ff4df22369146e26c305946939bfd7f07266107cea3e40375","fillQty":5,"fillPrice":0.4,"latencyMs":120352}
+[2026-02-06T01:02:17.967Z] [LEG_SUBMIT] {"executionId":"exec_mla6hzd8_6rtu5x","leg":"B","venue":"kalshi","side":"yes","price":0.45,"qty":5,"clientOrderId":"kalshi_B_mla6hzd8_kfos"}
+[2026-02-06T01:02:18.470Z] [UNWIND_START] {"executionId":"exec_mla6hzd8_6rtu5x","reason":"Leg B failed: Leg B timeout after 498ms","legToUnwind":{"venue":"polymarket","side":"no","fillPrice":0.4}}
+[2026-02-06T01:02:18.469Z] [LEG_FAIL] {"executionId":"exec_mla6hzd8_6rtu5x","leg":"B","venue":"kalshi","reason":"rejected","error":"Leg B timeout after 498ms"}
+[2026-02-06T01:02:21.972Z] [UNWIND_RESULT] {"executionId":"exec_mla6hzd8_6rtu5x","success":true,"unwindPrice":0.01,"realizedLoss":1.9500000000000002}
+[2026-02-06T01:02:21.973Z] [KILL_SWITCH] {"dailyLoss":1.9500000000000002,"maxDailyLoss":1.5,"trigger":"Leg B failed: Leg B timeout after 498ms"}
+[2026-02-06T01:02:21.972Z] [EXECUTION_COMPLETE] {"executionId":"exec_mla6hzd8_6rtu5x","status":"unwound","success":false,"realizedPnl":-1.9500000000000002,"latencyMs":124360,"legALatencyMs":120352,"legBLatencyMs":null}
+[2026-02-06T01:02:21.972Z] [COOLDOWN] {"reason":"Leg B failed: Leg B timeout after 498ms","durationMs":3000}

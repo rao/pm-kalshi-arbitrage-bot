@@ -136,6 +136,17 @@ export function getLatestPrice(): number | null {
 }
 
 /**
+ * Reset only crossing count and lastSide.
+ * Called when entering MONITORING to ensure crossings are counted
+ * only from the monitoring window onward (not accumulated from interval start).
+ * Preserves range, history, and reference price.
+ */
+export function resetCrossingCount(): void {
+  crossingCount = 0;
+  lastSide = null;
+}
+
+/**
  * Reset all store state (for testing).
  */
 export function resetStore(): void {

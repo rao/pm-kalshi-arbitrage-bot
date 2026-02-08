@@ -80,8 +80,8 @@ export const RISK_PARAMS = {
   volatilityExitRangeThresholdUsd: 100,
   /** Min profit per contract to sell a side (bid - entry) */
   volatilityExitMinProfitPerShare: 0.02,
-  /** Only activate in last N ms of interval (7.5 min = 450000) */
-  volatilityExitWindowMs: 450000,
+  /** Only activate in last N ms of interval (6 min = 360000) */
+  volatilityExitWindowMs: 360000,
   /** Above this time-to-rollover, require full minProfitPerShare (patient zone) (ms) */
   volatilityExitPatientThresholdMs: 120000,
   /** Above this (but below patient), accept breakeven; below = emergency force sell (ms) */

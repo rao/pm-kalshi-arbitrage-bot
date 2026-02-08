@@ -13,7 +13,7 @@ import {
   VolatilityExitManager,
   type VolatilityExitDeps,
 } from "../src/execution/volatilityExitManager";
-import { resetStore, setReferencePrice, recordPrice } from "../src/data/btcPriceStore";
+import { resetStore, setReferencePrice, recordPrice, getAnalytics } from "../src/data/btcPriceStore";
 import {
   resetPositionTracker,
   recordFill,
@@ -512,6 +512,211 @@ describe("VolatilityExitManager", () => {
 
       expect((manager as any).failedSides.size).toBe(0);
       expect((manager as any).lastFailedTriggerTs).toBeNull();
+    });
+  });
+
+  describe("crossing reset on MONITORING entry", () => {
+    test("crossings are reset when transitioning to MONITORING", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      recordFill("polymarket", "yes", "buy", 5, 0.50, intervalKey, "fill1", "up-token-123");
+
+      let msLeft = 500000; // start outside window
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          getMsUntilRollover: () => msLeft,
+        })
+      );
+
+      // Build up crossings while still IDLE (outside window)
+      await manager.onBtcPriceUpdate(makeUpdate(100000)); // sets ref
+      await manager.onBtcPriceUpdate(makeUpdate(100050)); // above
+      await manager.onBtcPriceUpdate(makeUpdate(99950));  // cross 1
+      await manager.onBtcPriceUpdate(makeUpdate(100050)); // cross 2
+      expect(manager.getState()).toBe("IDLE"); // still outside window
+      expect(getAnalytics().crossingCount).toBe(2);
+
+      // Now move into the window → MONITORING entry should reset crossings
+      msLeft = 300000;
+      await manager.onBtcPriceUpdate(makeUpdate(100040)); // triggers MONITORING entry
+
+      expect(manager.getState()).toBe("MONITORING");
+      // Crossings should have been reset on MONITORING entry.
+      // The tick at 100040 after reset: lastSide was null, so no crossing counted.
+      expect(getAnalytics().crossingCount).toBe(0);
+    });
+
+    test("trigger requires crossings accumulated AFTER monitoring entry", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      recordFill("polymarket", "yes", "buy", 5, 0.50, intervalKey, "fill1", "up-token-123");
+      recordFill("kalshi", "no", "buy", 5, 0.45, intervalKey, "fill2", "KXBTC-100000");
+
+      let msLeft = 500000; // start outside window
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          getMsUntilRollover: () => msLeft,
+          dryRun: true,
+        })
+      );
+
+      // Build up 3 crossings and range while IDLE (outside window)
+      await manager.onBtcPriceUpdate(makeUpdate(100000)); // sets ref
+      await manager.onBtcPriceUpdate(makeUpdate(100100)); // above
+      await manager.onBtcPriceUpdate(makeUpdate(99900));  // cross 1, range=200
+      await manager.onBtcPriceUpdate(makeUpdate(100100)); // cross 2
+      await manager.onBtcPriceUpdate(makeUpdate(99900));  // cross 3
+      expect(manager.getState()).toBe("IDLE");
+
+      // Enter the window → MONITORING, crossings reset
+      msLeft = 300000;
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+      expect(manager.getState()).toBe("MONITORING");
+
+      // Now in MONITORING, crossings should be 0, so trigger should NOT fire
+      // even though range ($200) still exceeds threshold.
+      // The tick that entered MONITORING (100050) had its recordPrice before
+      // the reset, so post-reset lastSide=null. Next tick establishes side
+      // without counting as crossing.
+      await manager.onBtcPriceUpdate(makeUpdate(99950)); // establishes "below", no crossing (lastSide was null)
+
+      expect(manager.getState()).toBe("MONITORING"); // should NOT have triggered
+      expect(manager.isActive()).toBe(false);
+      expect(getAnalytics().crossingCount).toBe(0); // still 0 — first tick post-reset establishes side only
+
+      // Now a real crossing
+      await manager.onBtcPriceUpdate(makeUpdate(100050)); // below→above = cross 1
+      expect(getAnalytics().crossingCount).toBe(1);
+      expect(manager.getState()).toBe("MONITORING"); // still not enough (need 2)
+    });
+  });
+
+  describe("first sell profitability gate", () => {
+    test("skips unprofitable targets in patient zone, returns to MONITORING", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      const mapping = makeMapping(intervalKey);
+
+      // Record positions with high entry prices
+      recordFill("polymarket", "yes", "buy", 5, 0.55, intervalKey, "fill1", "up-token-123");
+      recordFill("kalshi", "no", "buy", 5, 0.55, intervalKey, "fill2", "KXBTC-100000");
+
+      // Set up volatile BTC data
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);
+      recordPrice(99940, now + 1);
+      recordPrice(100050, now + 2);
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: () => {},
+            warn: (msg: string) => logs.push(`WARN: ${msg}`),
+            error: (msg: string) => logs.push(`ERROR: ${msg}`),
+          } as any,
+          getCurrentMapping: () => mapping,
+          dryRun: true,
+          // Current bids are BELOW entry → negative profitability
+          getQuote: () => makeQuote(0.50, 0.50), // bids 0.50, entry was 0.55 → profit = -0.05
+          getMsUntilRollover: () => 300000, // patient zone (>120s)
+        })
+      );
+
+      // Force MONITORING state
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Should return to MONITORING (not SELLING_FIRST, not cooldown)
+      expect(manager.getState()).toBe("MONITORING");
+
+      // Should have skipped all targets
+      expect(logs.some((l) => l.includes("below patient threshold"))).toBe(true);
+      expect(logs.some((l) => l.includes("below profitability threshold"))).toBe(true);
+
+      // No cooldown should be set (skipped, not failed)
+      expect((manager as any).lastFailedTriggerTs).toBeNull();
+    });
+
+    test("sells profitable target in patient zone", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      const mapping = makeMapping(intervalKey);
+
+      recordFill("polymarket", "yes", "buy", 5, 0.40, intervalKey, "fill1", "up-token-123");
+      recordFill("kalshi", "no", "buy", 5, 0.40, intervalKey, "fill2", "KXBTC-100000");
+
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);
+      recordPrice(99940, now + 1);
+      recordPrice(100050, now + 2);
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: () => {},
+            warn: (msg: string) => logs.push(`WARN: ${msg}`),
+            error: (msg: string) => logs.push(`ERROR: ${msg}`),
+          } as any,
+          getCurrentMapping: () => mapping,
+          dryRun: true, // dry run simulates fills
+          // Bids at 0.55, entry at 0.40 → profit = +0.15 (above $0.02 threshold)
+          getQuote: () => makeQuote(0.55, 0.55),
+          getMsUntilRollover: () => 300000,
+        })
+      );
+
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Should have sold (dry run simulates fill)
+      expect(logs.some((l) => l.includes("First sell complete"))).toBe(true);
+      // State should advance past SELLING_FIRST
+      expect(["SELLING_SECOND", "DONE"]).toContain(manager.getState());
+    });
+
+    test("emergency zone sells unprofitable first target", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      const mapping = makeMapping(intervalKey);
+
+      recordFill("polymarket", "yes", "buy", 5, 0.55, intervalKey, "fill1", "up-token-123");
+      recordFill("kalshi", "no", "buy", 5, 0.55, intervalKey, "fill2", "KXBTC-100000");
+
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);
+      recordPrice(99940, now + 1);
+      recordPrice(100050, now + 2);
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: () => {},
+            warn: (msg: string) => logs.push(`WARN: ${msg}`),
+            error: (msg: string) => logs.push(`ERROR: ${msg}`),
+          } as any,
+          getCurrentMapping: () => mapping,
+          dryRun: true,
+          getQuote: () => makeQuote(0.50, 0.50), // loss: 0.50 - 0.55 = -0.05
+          getMsUntilRollover: () => 30000, // emergency zone (<60s)
+        })
+      );
+
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Emergency zone should sell even at a loss
+      expect(logs.some((l) => l.includes("First sell complete"))).toBe(true);
+      expect(["SELLING_SECOND", "DONE"]).toContain(manager.getState());
     });
   });
 

@@ -27,6 +27,7 @@ import {
   getReferencePrice,
   getAnalytics,
   resetForInterval as resetPriceStore,
+  resetCrossingCount,
 } from "../data/btcPriceStore";
 import {
   getPositions,
@@ -196,8 +197,9 @@ export class VolatilityExitManager {
     if (msLeft > RISK_PARAMS.volatilityExitWindowMs) return;
 
     this.state = "MONITORING";
+    resetCrossingCount();
     this.deps.logger.info(
-      `[VOL-EXIT] Entered MONITORING (${Math.round(msLeft / 1000)}s until rollover, positions held)`
+      `[VOL-EXIT] Entered MONITORING (${Math.round(msLeft / 1000)}s until rollover, positions held, crossings reset)`
     );
   }
 
@@ -247,13 +249,26 @@ export class VolatilityExitManager {
       ).join(" → ")}`
     );
 
-    // Fix 1: Loop through ALL targets, not just targets[0]
+    // Loop through ALL targets with zone-based profitability gate
     this.state = "SELLING_FIRST";
     let firstSoldTarget: SellTarget | null = null;
     let soldQty = 0;
+    let anyAttempted = false;
 
     for (let i = 0; i < targets.length; i++) {
       const target = targets[i];
+
+      // Apply zone-based profitability threshold to first sell
+      const { zone, threshold } = this.getZoneProfitThreshold();
+      if (target.profitability < threshold) {
+        this.deps.logger.info(
+          `[VOL-EXIT] Skipping ${target.venue} ${target.side}: profit=${target.profitability.toFixed(4)} ` +
+            `below ${zone} threshold (${threshold === -Infinity ? "-Inf" : threshold.toFixed(2)})`
+        );
+        continue;
+      }
+
+      anyAttempted = true;
       this.deps.logger.info(
         `[VOL-EXIT] Attempting sell ${i + 1}/${targets.length}: ` +
           `${target.venue} ${target.side} qty=${target.qty}`
@@ -298,12 +313,20 @@ export class VolatilityExitManager {
       }
     }
 
-    // ALL targets failed — cooldown and return to monitoring
-    this.deps.logger.warn(
-      "[VOL-EXIT] All sell targets failed, entering cooldown and returning to MONITORING"
-    );
-    this.lastFailedTriggerTs = Date.now();
-    this.state = "MONITORING";
+    if (!anyAttempted) {
+      // All targets skipped (none met profitability threshold) — return to MONITORING without cooldown
+      this.deps.logger.info(
+        "[VOL-EXIT] All targets below profitability threshold, returning to MONITORING"
+      );
+      this.state = "MONITORING";
+    } else {
+      // All attempted targets failed — cooldown and return to monitoring
+      this.deps.logger.warn(
+        "[VOL-EXIT] All sell targets failed, entering cooldown and returning to MONITORING"
+      );
+      this.lastFailedTriggerTs = Date.now();
+      this.state = "MONITORING";
+    }
   }
 
   private async checkSecondSell(): Promise<void> {
@@ -320,20 +343,9 @@ export class VolatilityExitManager {
     }
 
     // Dynamic zone based on time-to-rollover
+    const { zone, threshold } = this.getZoneProfitThreshold();
     const msLeft = this.getMsUntilRollover();
-    let zone: "patient" | "breakeven" | "emergency";
-    let shouldSell = false;
-
-    if (msLeft < RISK_PARAMS.volatilityExitBreakevenThresholdMs) {
-      zone = "emergency";
-      shouldSell = true; // Force sell at any price
-    } else if (msLeft < RISK_PARAMS.volatilityExitPatientThresholdMs) {
-      zone = "breakeven";
-      shouldSell = target.profitability >= 0; // Accept any non-negative
-    } else {
-      zone = "patient";
-      shouldSell = target.profitability >= RISK_PARAMS.volatilityExitMinProfitPerShare;
-    }
+    const shouldSell = target.profitability >= threshold;
 
     if (shouldSell) {
       if (zone === "emergency") {
@@ -374,6 +386,17 @@ export class VolatilityExitManager {
             `${target.venue} ${target.side} profit=${target.profitability.toFixed(4)}`
         );
       }
+    }
+  }
+
+  private getZoneProfitThreshold(): { zone: "patient" | "breakeven" | "emergency"; threshold: number } {
+    const msLeft = this.getMsUntilRollover();
+    if (msLeft < RISK_PARAMS.volatilityExitBreakevenThresholdMs) {
+      return { zone: "emergency", threshold: -Infinity };
+    } else if (msLeft < RISK_PARAMS.volatilityExitPatientThresholdMs) {
+      return { zone: "breakeven", threshold: 0 };
+    } else {
+      return { zone: "patient", threshold: RISK_PARAMS.volatilityExitMinProfitPerShare };
     }
   }
 
