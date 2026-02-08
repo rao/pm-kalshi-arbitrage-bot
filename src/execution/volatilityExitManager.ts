@@ -7,7 +7,7 @@
  *
  * Also provides a trading halt function for the last 1 minute of volatile intervals.
  *
- * States: IDLE → MONITORING → SELLING_FIRST → SELLING_SECOND → DONE → IDLE
+ * States: IDLE → MONITORING → WAITING_FOR_PROFITABILITY → SELLING_FIRST → SELLING_SECOND → DONE → IDLE
  */
 
 import type { Logger } from "../logging/logger";
@@ -45,6 +45,7 @@ import {
 export type VolatilityExitState =
   | "IDLE"
   | "MONITORING"
+  | "WAITING_FOR_PROFITABILITY"
   | "SELLING_FIRST"
   | "SELLING_SECOND"
   | "DONE";
@@ -89,6 +90,9 @@ export class VolatilityExitManager {
   private firstSoldQty = 0;
   private lastFailedTriggerTs: number | null = null;
   private failedSides: Set<string> = new Set();
+  private pendingWaitTargets: SellTarget[] = [];
+  private lastWaitingLogTs = 0;
+  private lastBtcPrice: number | null = null;
 
   constructor(deps: VolatilityExitDeps) {
     this.deps = deps;
@@ -105,6 +109,7 @@ export class VolatilityExitManager {
    */
   isActive(): boolean {
     return (
+      this.state === "WAITING_FOR_PROFITABILITY" ||
       this.state === "SELLING_FIRST" ||
       this.state === "SELLING_SECOND" ||
       this.state === "DONE"
@@ -140,6 +145,8 @@ export class VolatilityExitManager {
     if (this._processing) return;
     this._processing = true;
     try {
+      this.lastBtcPrice = update.price;
+
       // 1. Set reference price from first tick of interval
       if (!this.referenceSet) {
         setReferencePrice(update.price);
@@ -162,6 +169,10 @@ export class VolatilityExitManager {
 
         case "MONITORING":
           await this.checkTrigger();
+          break;
+
+        case "WAITING_FOR_PROFITABILITY":
+          await this.checkWaitingTargets();
           break;
 
         case "SELLING_SECOND":
@@ -187,6 +198,9 @@ export class VolatilityExitManager {
     this.firstSoldQty = 0;
     this.lastFailedTriggerTs = null;
     this.failedSides.clear();
+    this.pendingWaitTargets = [];
+    this.lastWaitingLogTs = 0;
+    this.lastBtcPrice = null;
     resetPriceStore();
   }
 
@@ -200,6 +214,9 @@ export class VolatilityExitManager {
     this.pendingSecondTarget = null;
     this.lastFailedTriggerTs = null;
     this.failedSides.clear();
+    this.pendingWaitTargets = [];
+    this.lastWaitingLogTs = 0;
+    this.lastBtcPrice = null;
   }
 
   // --- Private state machine methods ---
@@ -265,8 +282,38 @@ export class VolatilityExitManager {
 
     // Loop through ALL targets with zone-based profitability gate
     this.state = "SELLING_FIRST";
-    let firstSoldTarget: SellTarget | null = null;
-    let soldQty = 0;
+    let anyAttempted = false;
+
+    const result = await this.executeSellSequence(targets);
+    anyAttempted = result.anyAttempted;
+
+    if (result.done) return;
+
+    if (!anyAttempted) {
+      // All targets skipped (none met profitability threshold) — wait for profitability
+      this.pendingWaitTargets = targets;
+      this.lastWaitingLogTs = 0; // force immediate first log
+      this.state = "WAITING_FOR_PROFITABILITY";
+      const msLeft = this.getMsUntilRollover();
+      const emergencyIn = Math.max(0, msLeft - RISK_PARAMS.volatilityExitBreakevenThresholdMs);
+      this.deps.logger.info(
+        `[VOL-EXIT] Waiting for profitability — emergency auto-sell in ${Math.round(emergencyIn / 1000)}s`
+      );
+    } else {
+      // All attempted targets failed — cooldown and return to monitoring
+      this.deps.logger.warn(
+        "[VOL-EXIT] All sell targets failed, entering cooldown and returning to MONITORING"
+      );
+      this.lastFailedTriggerTs = Date.now();
+      this.state = "MONITORING";
+    }
+  }
+
+  /**
+   * Execute the sell sequence: loop through sorted targets, attempt sells with zone gating.
+   * Returns whether any target was attempted and whether the sequence completed (sold + set up next state).
+   */
+  private async executeSellSequence(targets: SellTarget[]): Promise<{ anyAttempted: boolean; done: boolean }> {
     let anyAttempted = false;
 
     for (let i = 0; i < targets.length; i++) {
@@ -275,7 +322,7 @@ export class VolatilityExitManager {
       // Apply zone-based profitability threshold to first sell
       const { zone, threshold } = this.getZoneProfitThreshold();
       if (target.profitability < threshold) {
-        this.deps.logger.info(
+        this.deps.logger.debug(
           `[VOL-EXIT] Skipping ${target.venue} ${target.side}: profit=${target.profitability.toFixed(4)} ` +
             `below ${zone} threshold (${threshold === -Infinity ? "-Inf" : threshold.toFixed(2)})`
         );
@@ -285,15 +332,14 @@ export class VolatilityExitManager {
       anyAttempted = true;
       this.deps.logger.info(
         `[VOL-EXIT] Attempting sell ${i + 1}/${targets.length}: ` +
-          `${target.venue} ${target.side} qty=${target.qty}`
+          `${target.venue} ${target.side} qty=${target.qty} bid=${target.currentBid.toFixed(4)} BTC=$${this.lastBtcPrice?.toFixed(2) ?? "?"}`
       );
 
-      soldQty = await this.executeSellWithRetries(target);
+      const soldQty = await this.executeSellWithRetries(target);
       if (soldQty > 0) {
-        firstSoldTarget = target;
         this.firstSoldQty = soldQty;
         this.deps.logger.info(
-          `[VOL-EXIT] First sell complete: ${soldQty} ${target.venue} ${target.side}`
+          `[VOL-EXIT] First sell complete: ${soldQty} ${target.venue} ${target.side} bid=${target.currentBid.toFixed(4)} BTC=$${this.lastBtcPrice?.toFixed(2) ?? "?"}`
         );
 
         // Set up remaining targets (excluding sold + failed sides) for second sell
@@ -318,7 +364,7 @@ export class VolatilityExitManager {
           this.state = "DONE";
           this.deps.logger.info("[VOL-EXIT] Exit complete (single position)");
         }
-        return;
+        return { anyAttempted: true, done: true };
       } else {
         this.deps.logger.warn(
           `[VOL-EXIT] Sell ${i + 1}/${targets.length} got no fill: ` +
@@ -327,20 +373,7 @@ export class VolatilityExitManager {
       }
     }
 
-    if (!anyAttempted) {
-      // All targets skipped (none met profitability threshold) — return to MONITORING without cooldown
-      this.deps.logger.info(
-        "[VOL-EXIT] All targets below profitability threshold, returning to MONITORING"
-      );
-      this.state = "MONITORING";
-    } else {
-      // All attempted targets failed — cooldown and return to monitoring
-      this.deps.logger.warn(
-        "[VOL-EXIT] All sell targets failed, entering cooldown and returning to MONITORING"
-      );
-      this.lastFailedTriggerTs = Date.now();
-      this.state = "MONITORING";
-    }
+    return { anyAttempted, done: false };
   }
 
   private async checkSecondSell(): Promise<void> {
@@ -362,27 +395,28 @@ export class VolatilityExitManager {
     const shouldSell = target.profitability >= threshold;
 
     if (shouldSell) {
+      const bidBtc = `bid=${target.currentBid.toFixed(4)} BTC=$${this.lastBtcPrice?.toFixed(2) ?? "?"}`;
       if (zone === "emergency") {
         this.deps.logger.warn(
           `[VOL-EXIT] EMERGENCY sell (${Math.round(msLeft / 1000)}s left, ${Math.round(elapsed / 1000)}s elapsed), ` +
-            `profit=${target.profitability.toFixed(4)}`
+            `profit=${target.profitability.toFixed(4)} ${bidBtc}`
         );
       } else if (zone === "breakeven") {
         this.deps.logger.info(
           `[VOL-EXIT] Breakeven zone sell (${Math.round(msLeft / 1000)}s left): ${target.venue} ${target.side} ` +
-            `profit=${target.profitability.toFixed(4)}`
+            `profit=${target.profitability.toFixed(4)} ${bidBtc}`
         );
       } else {
         this.deps.logger.info(
           `[VOL-EXIT] Patient zone sell: ${target.venue} ${target.side} ` +
-            `profit=${target.profitability.toFixed(4)}`
+            `profit=${target.profitability.toFixed(4)} ${bidBtc}`
         );
       }
 
       const soldQty = await this.executeSellWithRetries(target);
       if (soldQty > 0) {
         this.deps.logger.info(
-          `[VOL-EXIT] Second sell complete: ${soldQty} ${target.venue} ${target.side}`
+          `[VOL-EXIT] Second sell complete: ${soldQty} ${target.venue} ${target.side} bid=${target.currentBid.toFixed(4)} BTC=$${this.lastBtcPrice?.toFixed(2) ?? "?"}`
         );
       } else {
         this.deps.logger.warn("[VOL-EXIT] Second sell got no fill");
@@ -400,6 +434,74 @@ export class VolatilityExitManager {
             `${target.venue} ${target.side} profit=${target.profitability.toFixed(4)}`
         );
       }
+    }
+  }
+
+  /**
+   * Check if waiting targets have become profitable enough to sell.
+   * Refreshes bids from local quote cache (no API calls).
+   * Logs a countdown summary every 15 seconds.
+   */
+  private async checkWaitingTargets(): Promise<void> {
+    if (this.pendingWaitTargets.length === 0) {
+      this.state = "IDLE";
+      return;
+    }
+
+    const { zone, threshold } = this.getZoneProfitThreshold();
+    const msLeft = this.getMsUntilRollover();
+
+    // Refresh bids and profitability from latest quotes
+    for (const target of this.pendingWaitTargets) {
+      const quote = this.deps.getQuote(target.venue);
+      if (quote) {
+        target.currentBid = this.getBidFromQuote(target.side, quote);
+        target.profitability = target.currentBid - target.entryVwap;
+      }
+    }
+
+    // Re-sort by profitability descending
+    this.pendingWaitTargets.sort((a, b) => b.profitability - a.profitability);
+
+    // Check if any target now meets profitability threshold
+    const sellableTarget = this.pendingWaitTargets.find(t => t.profitability >= threshold);
+
+    if (sellableTarget) {
+      this.deps.logger.info(
+        `[VOL-EXIT] Target now meets ${zone} threshold: ${sellableTarget.venue} ${sellableTarget.side} ` +
+          `profit=${sellableTarget.profitability.toFixed(4)} bid=${sellableTarget.currentBid.toFixed(4)} BTC=$${this.lastBtcPrice?.toFixed(2) ?? "?"}`
+      );
+      this.state = "SELLING_FIRST";
+      const result = await this.executeSellSequence(this.pendingWaitTargets);
+      this.pendingWaitTargets = [];
+
+      if (result.done) return;
+
+      if (result.anyAttempted) {
+        // All attempted targets failed — cooldown and return to monitoring
+        this.deps.logger.warn(
+          "[VOL-EXIT] All sell targets failed during waiting sell, entering cooldown"
+        );
+        this.lastFailedTriggerTs = Date.now();
+        this.state = "MONITORING";
+      } else {
+        // Targets became unprofitable between check and execution — return to waiting
+        this.state = "WAITING_FOR_PROFITABILITY";
+      }
+      return;
+    }
+
+    // Periodic 15s countdown log
+    const now = Date.now();
+    if (now - this.lastWaitingLogTs >= 15000) {
+      this.lastWaitingLogTs = now;
+      const emergencyIn = Math.max(0, msLeft - RISK_PARAMS.volatilityExitBreakevenThresholdMs);
+      const targetSummary = this.pendingWaitTargets
+        .map(t => `${t.venue} ${t.side} qty=${t.qty} entry=${t.entryVwap.toFixed(4)} bid=${t.currentBid.toFixed(4)} profit=${t.profitability.toFixed(4)}`)
+        .join(" | ");
+      this.deps.logger.info(
+        `[VOL-EXIT] Waiting: ${targetSummary} | BTC=$${this.lastBtcPrice?.toFixed(2) ?? "?"} | auto-sell in ${Math.round(emergencyIn / 1000)}s (${zone} zone, ${Math.round(msLeft / 1000)}s to rollover)`
+      );
     }
   }
 
@@ -583,7 +685,7 @@ export class VolatilityExitManager {
     if (this.deps.dryRun) {
       this.deps.logger.info(
         `[VOL-EXIT] DRY RUN: would sell ${target.qty} ${target.venue} ${target.side} ` +
-          `@ ~$${(target.currentBid - RISK_PARAMS.volatilityExitSellPriceOffset).toFixed(4)}`
+          `@ ~$${(target.currentBid - RISK_PARAMS.volatilityExitSellPriceOffset).toFixed(4)} BTC=$${this.lastBtcPrice?.toFixed(2) ?? "?"}`
       );
       // Simulate fill in dry run for state machine progression
       return target.qty;

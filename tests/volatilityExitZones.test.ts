@@ -125,6 +125,7 @@ describe("VolatilityExitManager - dynamic second-sell zones", () => {
     recordPrice(100060, Date.now());
     recordPrice(99940, Date.now() + 1);
     recordPrice(100050, Date.now() + 2);
+    recordPrice(99950, Date.now() + 3);
 
     currentMsLeft = opts.msLeft;
 

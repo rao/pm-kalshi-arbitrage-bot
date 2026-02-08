@@ -278,12 +278,13 @@ describe("VolatilityExitManager", () => {
       recordFill("polymarket", "yes", "buy", 5, 0.40, intervalKey, "fill1", "up-token-123");
       recordFill("kalshi", "no", "buy", 5, 0.40, intervalKey, "fill2", "KXBTC-100000");
 
-      // Set up volatile BTC data: ref=100000, oscillate to get crossings>=2, range>=100
+      // Set up volatile BTC data: ref=100000, oscillate to get crossings>=3, range>=100
       setReferencePrice(100000);
       const now = Date.now();
-      recordPrice(100060, now);    // above
-      recordPrice(99940, now + 1); // below — crossing 1
+      recordPrice(100060, now);     // above
+      recordPrice(99940, now + 1);  // below — crossing 1
       recordPrice(100050, now + 2); // above — crossing 2
+      recordPrice(99950, now + 3);  // below — crossing 3
       // range = 100060 - 99940 = 120 >= 100 threshold
 
       const logs: string[] = [];
@@ -590,7 +591,7 @@ describe("VolatilityExitManager", () => {
   });
 
   describe("first sell profitability gate", () => {
-    test("skips unprofitable targets in patient zone, returns to MONITORING", async () => {
+    test("skips unprofitable targets in patient zone, enters WAITING_FOR_PROFITABILITY", async () => {
       const intervalKey = makeCurrentIntervalKey();
       const mapping = makeMapping(intervalKey);
 
@@ -604,6 +605,7 @@ describe("VolatilityExitManager", () => {
       recordPrice(100060, now);
       recordPrice(99940, now + 1);
       recordPrice(100050, now + 2);
+      recordPrice(99950, now + 3);
 
       const logs: string[] = [];
       const manager = new VolatilityExitManager(
@@ -628,12 +630,14 @@ describe("VolatilityExitManager", () => {
 
       await manager.onBtcPriceUpdate(makeUpdate(100050));
 
-      // Should return to MONITORING (not SELLING_FIRST, not cooldown)
-      expect(manager.getState()).toBe("MONITORING");
+      // Should enter WAITING_FOR_PROFITABILITY (not MONITORING)
+      expect(manager.getState()).toBe("WAITING_FOR_PROFITABILITY");
 
-      // Should have skipped all targets
-      expect(logs.some((l) => l.includes("below patient threshold"))).toBe(true);
-      expect(logs.some((l) => l.includes("below profitability threshold"))).toBe(true);
+      // Should have logged "Waiting for profitability"
+      expect(logs.some((l) => l.includes("Waiting for profitability"))).toBe(true);
+
+      // isActive should be true (blocks arb/reconciler)
+      expect(manager.isActive()).toBe(true);
 
       // No cooldown should be set (skipped, not failed)
       expect((manager as any).lastFailedTriggerTs).toBeNull();
@@ -651,6 +655,7 @@ describe("VolatilityExitManager", () => {
       recordPrice(100060, now);
       recordPrice(99940, now + 1);
       recordPrice(100050, now + 2);
+      recordPrice(99950, now + 3);
 
       const logs: string[] = [];
       const manager = new VolatilityExitManager(
@@ -692,6 +697,7 @@ describe("VolatilityExitManager", () => {
       recordPrice(100060, now);
       recordPrice(99940, now + 1);
       recordPrice(100050, now + 2);
+      recordPrice(99950, now + 3);
 
       const logs: string[] = [];
       const manager = new VolatilityExitManager(
@@ -797,6 +803,7 @@ describe("VolatilityExitManager", () => {
       recordPrice(100060, now);
       recordPrice(99940, now + 1);
       recordPrice(100050, now + 2);
+      recordPrice(99950, now + 3);
 
       const logs: string[] = [];
       const manager = new VolatilityExitManager(
@@ -840,6 +847,7 @@ describe("VolatilityExitManager", () => {
       recordPrice(100060, now);
       recordPrice(99940, now + 1);
       recordPrice(100050, now + 2);
+      recordPrice(99950, now + 3);
 
       const logs: string[] = [];
       const manager = new VolatilityExitManager(
@@ -878,6 +886,7 @@ describe("VolatilityExitManager", () => {
       recordPrice(100060, now);
       recordPrice(99940, now + 1);
       recordPrice(100050, now + 2);
+      recordPrice(99950, now + 3);
 
       let kalshiCallCount = 0;
       // First call: partial fill (7/10), second call: fill remaining 3
@@ -931,6 +940,7 @@ describe("VolatilityExitManager", () => {
       recordPrice(100060, now);
       recordPrice(99940, now + 1);
       recordPrice(100050, now + 2);
+      recordPrice(99950, now + 3);
 
       let kalshiCallCount = 0;
       mockKalshiCreateOrder.mockImplementation(async () => {
@@ -984,6 +994,7 @@ describe("VolatilityExitManager", () => {
       recordPrice(100060, now);
       recordPrice(99940, now + 1);
       recordPrice(100050, now + 2);
+      recordPrice(99950, now + 3);
 
       let kalshiCallCount = 0;
       mockKalshiCreateOrder.mockImplementation(async () => {
@@ -1023,6 +1034,244 @@ describe("VolatilityExitManager", () => {
       // Only 1 kalshi call (no retries)
       expect(kalshiCallCount).toBe(1);
       expect(logs.some((l) => l.includes("First sell complete: 10"))).toBe(true);
+    });
+  });
+
+  describe("WAITING_FOR_PROFITABILITY state", () => {
+    /**
+     * Helper: set up manager with positions and volatile conditions,
+     * force into MONITORING, then trigger to enter WAITING_FOR_PROFITABILITY.
+     */
+    function setupInWaitingState(opts: {
+      entryVwap: number;
+      currentBid: number;
+      msLeft: number;
+      getQuote?: (venue: string) => any;
+    }) {
+      const intervalKey = makeCurrentIntervalKey();
+      const mapping = makeMapping(intervalKey);
+
+      recordFill("polymarket", "yes", "buy", 5, opts.entryVwap, intervalKey, "fill1", "up-token-123");
+      recordFill("kalshi", "no", "buy", 5, opts.entryVwap, intervalKey, "fill2", "KXBTC-100000");
+
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);
+      recordPrice(99940, now + 1);
+      recordPrice(100050, now + 2);
+      recordPrice(99950, now + 3);
+
+      let currentMsLeft = opts.msLeft;
+      let quoteProvider = opts.getQuote || (() => makeQuote(opts.currentBid, opts.currentBid));
+
+      const logs: string[] = [];
+      const deps = createMockDeps({
+        logger: {
+          info: (msg: string) => logs.push(msg),
+          debug: (msg: string) => logs.push(`DEBUG: ${msg}`),
+          warn: (msg: string) => logs.push(`WARN: ${msg}`),
+          error: (msg: string) => logs.push(`ERROR: ${msg}`),
+        } as any,
+        getCurrentMapping: () => mapping,
+        dryRun: true,
+        getQuote: quoteProvider as any,
+        getMsUntilRollover: () => currentMsLeft,
+      });
+
+      const manager = new VolatilityExitManager(deps);
+
+      // Force into MONITORING state with volatile conditions already set
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      return {
+        manager,
+        logs,
+        setMsLeft: (ms: number) => { currentMsLeft = ms; },
+        setQuoteProvider: (fn: (venue: string) => any) => { quoteProvider = fn; },
+      };
+    }
+
+    test("transitions from MONITORING to WAITING_FOR_PROFITABILITY when all below threshold", async () => {
+      const { manager, logs } = setupInWaitingState({
+        entryVwap: 0.55,
+        currentBid: 0.50, // profit = -0.05, below $0.02 patient threshold
+        msLeft: 300000,
+      });
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      expect(manager.getState()).toBe("WAITING_FOR_PROFITABILITY");
+      expect(manager.isActive()).toBe(true);
+      expect(logs.some((l) => l.includes("Waiting for profitability"))).toBe(true);
+    });
+
+    test("does not spam logs on subsequent ticks in WAITING state", async () => {
+      const { manager, logs } = setupInWaitingState({
+        entryVwap: 0.55,
+        currentBid: 0.50,
+        msLeft: 300000,
+      });
+
+      // Trigger into WAITING
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+      expect(manager.getState()).toBe("WAITING_FOR_PROFITABILITY");
+
+      const logsAfterEntry = logs.length;
+
+      // Simulate 10 rapid ticks (would have been 60+ log lines before fix)
+      for (let i = 0; i < 10; i++) {
+        await manager.onBtcPriceUpdate(makeUpdate(100050 + i));
+      }
+
+      // Should have at most 1 waiting log (initial 15s timer fires on first tick after entry)
+      const waitingLogs = logs.slice(logsAfterEntry).filter((l) => l.includes("[VOL-EXIT] Waiting:"));
+      expect(waitingLogs.length).toBeLessThanOrEqual(1);
+
+      // No TRIGGERED logs should appear (we're in WAITING, not MONITORING)
+      const triggeredLogs = logs.slice(logsAfterEntry).filter((l) => l.includes("TRIGGERED"));
+      expect(triggeredLogs.length).toBe(0);
+    });
+
+    test("logs countdown summary every 15s", async () => {
+      const { manager, logs } = setupInWaitingState({
+        entryVwap: 0.55,
+        currentBid: 0.50,
+        msLeft: 300000,
+      });
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+      expect(manager.getState()).toBe("WAITING_FOR_PROFITABILITY");
+
+      // First tick in WAITING should get immediate log (lastWaitingLogTs was set to 0)
+      await manager.onBtcPriceUpdate(makeUpdate(100051));
+      const waitingLogs = logs.filter((l) => l.includes("[VOL-EXIT] Waiting:"));
+      expect(waitingLogs.length).toBe(1);
+      expect(waitingLogs[0]).toContain("auto-sell in");
+      expect(waitingLogs[0]).toContain("BTC=$");
+      expect(waitingLogs[0]).toContain("patient zone");
+    });
+
+    test("sells immediately when profitability improves above threshold", async () => {
+      let currentBid = 0.50;
+      const { manager, logs } = setupInWaitingState({
+        entryVwap: 0.50,
+        currentBid: 0.51, // profit = 0.01, below patient $0.02
+        msLeft: 300000,
+        getQuote: () => makeQuote(currentBid, currentBid),
+      });
+
+      // Trigger into WAITING
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+      expect(manager.getState()).toBe("WAITING_FOR_PROFITABILITY");
+
+      // Improve bids to meet threshold (0.52 - 0.50 = 0.02 >= threshold)
+      currentBid = 0.53;
+      await manager.onBtcPriceUpdate(makeUpdate(100055));
+
+      // Should have transitioned through SELLING_FIRST to SELLING_SECOND or DONE
+      expect(["SELLING_SECOND", "DONE"]).toContain(manager.getState());
+      expect(logs.some((l) => l.includes("Target now meets patient threshold"))).toBe(true);
+      expect(logs.some((l) => l.includes("First sell complete"))).toBe(true);
+    });
+
+    test("emergency zone auto-sells from WAITING regardless of profitability", async () => {
+      const { manager, logs, setMsLeft } = setupInWaitingState({
+        entryVwap: 0.55,
+        currentBid: 0.50, // profit = -0.05
+        msLeft: 300000, // start in patient zone
+      });
+
+      // Enter WAITING in patient zone
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+      expect(manager.getState()).toBe("WAITING_FOR_PROFITABILITY");
+
+      // Move to emergency zone
+      setMsLeft(30000);
+      await manager.onBtcPriceUpdate(makeUpdate(100055));
+
+      // Emergency threshold is -Infinity, so all targets meet it
+      expect(["SELLING_SECOND", "DONE"]).toContain(manager.getState());
+      expect(logs.some((l) => l.includes("Target now meets emergency threshold"))).toBe(true);
+    });
+
+    test("isActive() returns true during WAITING_FOR_PROFITABILITY", async () => {
+      const { manager } = setupInWaitingState({
+        entryVwap: 0.55,
+        currentBid: 0.50,
+        msLeft: 300000,
+      });
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+      expect(manager.getState()).toBe("WAITING_FOR_PROFITABILITY");
+      expect(manager.isActive()).toBe(true);
+    });
+
+    test("resetForInterval clears waiting state", async () => {
+      const { manager } = setupInWaitingState({
+        entryVwap: 0.55,
+        currentBid: 0.50,
+        msLeft: 300000,
+      });
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+      expect(manager.getState()).toBe("WAITING_FOR_PROFITABILITY");
+      expect((manager as any).pendingWaitTargets.length).toBeGreaterThan(0);
+
+      manager.resetForInterval();
+
+      expect(manager.getState()).toBe("IDLE");
+      expect((manager as any).pendingWaitTargets.length).toBe(0);
+      expect((manager as any).lastWaitingLogTs).toBe(0);
+      expect((manager as any).lastBtcPrice).toBeNull();
+    });
+
+    test("stop clears waiting state", async () => {
+      const { manager } = setupInWaitingState({
+        entryVwap: 0.55,
+        currentBid: 0.50,
+        msLeft: 300000,
+      });
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+      expect(manager.getState()).toBe("WAITING_FOR_PROFITABILITY");
+
+      manager.stop();
+
+      expect(manager.getState()).toBe("IDLE");
+      expect((manager as any).pendingWaitTargets.length).toBe(0);
+      expect((manager as any).lastWaitingLogTs).toBe(0);
+      expect((manager as any).lastBtcPrice).toBeNull();
+    });
+
+    test("no API calls during WAITING ticks (uses local quote cache)", async () => {
+      let apiCallCount = 0;
+      const { manager, logs } = setupInWaitingState({
+        entryVwap: 0.55,
+        currentBid: 0.50,
+        msLeft: 300000,
+      });
+
+      // Override fetchApiPositions to track calls
+      (manager as any).deps.fetchApiPositions = async () => {
+        apiCallCount++;
+        return {
+          polymarket: { yes: 5, no: 0 },
+          kalshi: { yes: 0, no: 5 },
+        };
+      };
+
+      // Trigger into WAITING (this calls buildSellTargets once)
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+      expect(manager.getState()).toBe("WAITING_FOR_PROFITABILITY");
+      const apiCallsAfterEntry = apiCallCount;
+
+      // Send 5 more ticks — none should call fetchApiPositions
+      for (let i = 0; i < 5; i++) {
+        await manager.onBtcPriceUpdate(makeUpdate(100051 + i));
+      }
+
+      expect(apiCallCount).toBe(apiCallsAfterEntry); // no additional API calls
     });
   });
 

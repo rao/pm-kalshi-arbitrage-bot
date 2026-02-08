@@ -207,13 +207,13 @@ export function logUnwindStart(
   legToUnwind: { venue: string; side: string; fillPrice: number }
 ): void {
   // Console output
-  console.log("");
-  console.log(`[${formatTimestamp()}] UNWIND START`);
-  console.log(`  Reason: ${reason}`);
-  console.log(
-    `  Unwinding: ${legToUnwind.venue.toUpperCase()} ${legToUnwind.side.toUpperCase()} ` +
-      `bought @ ${formatPrice(legToUnwind.fillPrice)}`
-  );
+  // console.log("");
+  // console.log(`[${formatTimestamp()}] UNWIND START`);
+  // console.log(`  Reason: ${reason}`);
+  // console.log(
+  //   `  Unwinding: ${legToUnwind.venue.toUpperCase()} ${legToUnwind.side.toUpperCase()} ` +
+  //     `bought @ ${formatPrice(legToUnwind.fillPrice)}`
+  // );
 
   // File output
   logUnwindStartToFile({
