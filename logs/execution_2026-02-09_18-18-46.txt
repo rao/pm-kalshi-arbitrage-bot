@@ -1,0 +1,577 @@
+[2026-02-09T18:19:03.279Z] [BTC_PRICE] {"price":70395.8}
+[2026-02-09T18:19:18.278Z] [BTC_PRICE] {"price":70389.7}
+[2026-02-09T18:19:33.279Z] [BTC_PRICE] {"price":70413.6}
+[2026-02-09T18:19:48.279Z] [BTC_PRICE] {"price":70403}
+[2026-02-09T18:20:03.279Z] [BTC_PRICE] {"price":70477}
+[2026-02-09T18:20:11.307Z] [EXECUTION_START] {"executionId":"exec_mlfhysem_soiwfn","intervalKey":"18:15-18:30 UTC","expectedEdgeNet":0.043700000000000065,"legA":{"venue":"polymarket","side":"yes","price":0.42},"legB":{"venue":"kalshi","side":"no","price":0.5}}
+[2026-02-09T18:20:11.307Z] [LEG_SUBMIT] {"executionId":"exec_mlfhysem_soiwfn","leg":"A","venue":"polymarket","side":"yes","price":0.42,"qty":16,"clientOrderId":"polymarket_A_mlfhysem_zi8b"}
+[2026-02-09T18:20:11.307Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfhysem_soiwfn","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":2909,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:20:11.307Z] [LEG_FAIL] {"executionId":"exec_mlfhysem_soiwfn","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:20:18.279Z] [BTC_PRICE] {"price":70544.1}
+[2026-02-09T18:20:33.279Z] [BTC_PRICE] {"price":70479.7}
+[2026-02-09T18:20:48.279Z] [BTC_PRICE] {"price":70429.3}
+[2026-02-09T18:21:03.279Z] [BTC_PRICE] {"price":70404.6}
+[2026-02-09T18:21:18.279Z] [BTC_PRICE] {"price":70148.4}
+[2026-02-09T18:21:18.418Z] [EXECUTION_START] {"executionId":"exec_mlfi089j_8x8tex","intervalKey":"18:15-18:30 UTC","expectedEdgeNet":0.04419999999999995,"legA":{"venue":"polymarket","side":"no","price":0.78},"legB":{"venue":"kalshi","side":"yes","price":0.15}}
+[2026-02-09T18:21:18.419Z] [LEG_SUBMIT] {"executionId":"exec_mlfi089j_8x8tex","leg":"A","venue":"polymarket","side":"no","price":0.78,"qty":11,"clientOrderId":"polymarket_A_mlfi089j_utyc"}
+[2026-02-09T18:21:18.419Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfi089j_8x8tex","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":2812,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:21:18.419Z] [LEG_FAIL] {"executionId":"exec_mlfi089j_8x8tex","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:21:21.231Z] [EXECUTION_START] {"executionId":"exec_mlfi0ah1_nmpcec","intervalKey":"18:15-18:30 UTC","expectedEdgeNet":0.04620000000000006,"legA":{"venue":"polymarket","side":"no","price":0.84},"legB":{"venue":"kalshi","side":"yes","price":0.09}}
+[2026-02-09T18:21:21.231Z] [LEG_SUBMIT] {"executionId":"exec_mlfi0ah1_nmpcec","leg":"A","venue":"polymarket","side":"no","price":0.84,"qty":50,"clientOrderId":"polymarket_A_mlfi0ah1_d0xw"}
+[2026-02-09T18:21:21.231Z] [LEG_FAIL] {"executionId":"exec_mlfi0ah1_nmpcec","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:21:21.231Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfi0ah1_nmpcec","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":2762,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:21:33.279Z] [BTC_PRICE] {"price":70204.5}
+[2026-02-09T18:21:48.279Z] [BTC_PRICE] {"price":70214.5}
+[2026-02-09T18:22:03.279Z] [BTC_PRICE] {"price":70144.1}
+[2026-02-09T18:22:18.279Z] [BTC_PRICE] {"price":70211.3}
+[2026-02-09T18:22:33.279Z] [BTC_PRICE] {"price":70231.8}
+[2026-02-09T18:22:48.279Z] [BTC_PRICE] {"price":70228.2}
+[2026-02-09T18:23:03.280Z] [BTC_PRICE] {"price":70230.6}
+[2026-02-09T18:23:18.280Z] [BTC_PRICE] {"price":70237.3}
+[2026-02-09T18:23:33.281Z] [BTC_PRICE] {"price":70150.1}
+[2026-02-09T18:23:48.281Z] [BTC_PRICE] {"price":70174}
+[2026-02-09T18:24:03.281Z] [BTC_PRICE] {"price":70274.9}
+[2026-02-09T18:24:18.281Z] [BTC_PRICE] {"price":70246.4}
+[2026-02-09T18:24:33.281Z] [BTC_PRICE] {"price":70199.1}
+[2026-02-09T18:24:48.281Z] [BTC_PRICE] {"price":70236.4}
+[2026-02-09T18:25:03.281Z] [BTC_PRICE] {"price":70237.2}
+[2026-02-09T18:25:18.281Z] [BTC_PRICE] {"price":70188.7}
+[2026-02-09T18:25:33.281Z] [BTC_PRICE] {"price":70156}
+[2026-02-09T18:25:48.281Z] [BTC_PRICE] {"price":70104.9}
+[2026-02-09T18:26:03.281Z] [BTC_PRICE] {"price":70124.7}
+[2026-02-09T18:26:18.281Z] [BTC_PRICE] {"price":70100}
+[2026-02-09T18:26:33.281Z] [BTC_PRICE] {"price":70099.8}
+[2026-02-09T18:26:48.282Z] [BTC_PRICE] {"price":70061.3}
+[2026-02-09T18:27:03.282Z] [BTC_PRICE] {"price":70097.7}
+[2026-02-09T18:27:18.282Z] [BTC_PRICE] {"price":70127.5}
+[2026-02-09T18:27:33.282Z] [BTC_PRICE] {"price":70066.6}
+[2026-02-09T18:27:48.283Z] [BTC_PRICE] {"price":70063.5}
+[2026-02-09T18:28:03.284Z] [BTC_PRICE] {"price":70124.8}
+[2026-02-09T18:28:18.284Z] [BTC_PRICE] {"price":70180.9}
+[2026-02-09T18:28:33.284Z] [BTC_PRICE] {"price":70186.6}
+[2026-02-09T18:28:48.284Z] [BTC_PRICE] {"price":70243.8}
+[2026-02-09T18:29:03.284Z] [BTC_PRICE] {"price":70238.2}
+[2026-02-09T18:29:18.285Z] [BTC_PRICE] {"price":70217.7}
+[2026-02-09T18:29:33.285Z] [BTC_PRICE] {"price":70211.9}
+[2026-02-09T18:29:48.285Z] [BTC_PRICE] {"price":70207.3}
+[2026-02-09T18:30:03.286Z] [BTC_PRICE] {"price":70251.1}
+[2026-02-09T18:30:15.992Z] [EXECUTION_START] {"executionId":"exec_mlfibq2h_hc6tfy","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.044199999999999955,"legA":{"venue":"polymarket","side":"no","price":0.4},"legB":{"venue":"kalshi","side":"yes","price":0.52}}
+[2026-02-09T18:30:15.992Z] [LEG_SUBMIT] {"executionId":"exec_mlfibq2h_hc6tfy","leg":"A","venue":"polymarket","side":"no","price":0.4,"qty":6,"clientOrderId":"polymarket_A_mlfibq2h_x703"}
+[2026-02-09T18:30:15.992Z] [LEG_FAIL] {"executionId":"exec_mlfibq2h_hc6tfy","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:30:15.992Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfibq2h_hc6tfy","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":4095,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:30:18.286Z] [BTC_PRICE] {"price":70246}
+[2026-02-09T18:30:20.420Z] [EXECUTION_START] {"executionId":"exec_mlfibt8a_4coq6d","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.05400000000000008,"legA":{"venue":"polymarket","side":"no","price":0.41},"legB":{"venue":"kalshi","side":"yes","price":0.5}}
+[2026-02-09T18:30:20.420Z] [LEG_FAIL] {"executionId":"exec_mlfibt8a_4coq6d","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:30:20.420Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfibt8a_4coq6d","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":4426,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:30:20.420Z] [LEG_SUBMIT] {"executionId":"exec_mlfibt8a_4coq6d","leg":"A","venue":"polymarket","side":"no","price":0.41,"qty":6,"clientOrderId":"polymarket_A_mlfibt8a_ebb6"}
+[2026-02-09T18:30:33.286Z] [BTC_PRICE] {"price":70209}
+[2026-02-09T18:30:48.286Z] [BTC_PRICE] {"price":70112.9}
+[2026-02-09T18:31:03.287Z] [BTC_PRICE] {"price":70175.2}
+[2026-02-09T18:31:18.287Z] [BTC_PRICE] {"price":70234.7}
+[2026-02-09T18:31:33.287Z] [BTC_PRICE] {"price":70234}
+[2026-02-09T18:31:48.287Z] [BTC_PRICE] {"price":70139.1}
+[2026-02-09T18:32:03.287Z] [BTC_PRICE] {"price":70273.9}
+[2026-02-09T18:32:18.287Z] [BTC_PRICE] {"price":70280.1}
+[2026-02-09T18:32:33.287Z] [BTC_PRICE] {"price":70264.5}
+[2026-02-09T18:32:48.288Z] [BTC_PRICE] {"price":70332.8}
+[2026-02-09T18:33:03.288Z] [BTC_PRICE] {"price":70325.8}
+[2026-02-09T18:33:18.289Z] [BTC_PRICE] {"price":70359}
+[2026-02-09T18:33:33.289Z] [BTC_PRICE] {"price":70323.5}
+[2026-02-09T18:33:48.289Z] [BTC_PRICE] {"price":70431.5}
+[2026-02-09T18:34:03.290Z] [BTC_PRICE] {"price":70408.4}
+[2026-02-09T18:34:18.290Z] [BTC_PRICE] {"price":70413.1}
+[2026-02-09T18:34:33.290Z] [BTC_PRICE] {"price":70389.3}
+[2026-02-09T18:34:48.290Z] [BTC_PRICE] {"price":70361.3}
+[2026-02-09T18:35:03.291Z] [BTC_PRICE] {"price":70399}
+[2026-02-09T18:35:18.291Z] [BTC_PRICE] {"price":70453.6}
+[2026-02-09T18:35:33.291Z] [BTC_PRICE] {"price":70426.1}
+[2026-02-09T18:35:48.291Z] [BTC_PRICE] {"price":70449.7}
+[2026-02-09T18:36:03.291Z] [BTC_PRICE] {"price":70428.4}
+[2026-02-09T18:36:18.291Z] [BTC_PRICE] {"price":70402.2}
+[2026-02-09T18:36:33.292Z] [BTC_PRICE] {"price":70401.4}
+[2026-02-09T18:36:48.292Z] [BTC_PRICE] {"price":70345.3}
+[2026-02-09T18:37:03.292Z] [BTC_PRICE] {"price":70336.1}
+[2026-02-09T18:37:18.292Z] [BTC_PRICE] {"price":70332.3}
+[2026-02-09T18:37:33.292Z] [BTC_PRICE] {"price":70358.2}
+[2026-02-09T18:37:48.292Z] [BTC_PRICE] {"price":70366.9}
+[2026-02-09T18:38:03.292Z] [BTC_PRICE] {"price":70374}
+[2026-02-09T18:38:18.292Z] [BTC_PRICE] {"price":70347.6}
+[2026-02-09T18:38:33.293Z] [BTC_PRICE] {"price":70341.3}
+[2026-02-09T18:38:48.293Z] [BTC_PRICE] {"price":70322}
+[2026-02-09T18:38:57.858Z] [LEG_FAIL] {"executionId":"exec_mlfimyqn_a2dsf9","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:38:57.858Z] [LEG_SUBMIT] {"executionId":"exec_mlfimyqn_a2dsf9","leg":"A","venue":"polymarket","side":"yes","price":0.57,"qty":50,"clientOrderId":"polymarket_A_mlfimyqn_dcx8"}
+[2026-02-09T18:38:57.858Z] [EXECUTION_START] {"executionId":"exec_mlfimyqn_a2dsf9","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.04140000000000007,"legA":{"venue":"polymarket","side":"yes","price":0.57},"legB":{"venue":"kalshi","side":"no","price":0.35}}
+[2026-02-09T18:38:57.858Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfimyqn_a2dsf9","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":1507,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:39:03.293Z] [BTC_PRICE] {"price":70274.9}
+[2026-02-09T18:39:18.293Z] [BTC_PRICE] {"price":70286}
+[2026-02-09T18:39:22.120Z] [EXECUTION_START] {"executionId":"exec_mlfini2u_w04zx3","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.041300000000000066,"legA":{"venue":"polymarket","side":"yes","price":0.61},"legB":{"venue":"kalshi","side":"no","price":0.31}}
+[2026-02-09T18:39:22.120Z] [LEG_SUBMIT] {"executionId":"exec_mlfini2u_w04zx3","leg":"A","venue":"polymarket","side":"yes","price":0.61,"qty":50,"clientOrderId":"polymarket_A_mlfini2t_9ysv"}
+[2026-02-09T18:39:22.120Z] [LEG_FAIL] {"executionId":"exec_mlfini2u_w04zx3","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:39:22.120Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfini2u_w04zx3","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":706,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:39:22.677Z] [EXECUTION_START] {"executionId":"exec_mlfinimj_dj2gz7","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.041300000000000066,"legA":{"venue":"polymarket","side":"yes","price":0.62},"legB":{"venue":"kalshi","side":"no","price":0.3}}
+[2026-02-09T18:39:22.677Z] [LEG_FAIL] {"executionId":"exec_mlfinimj_dj2gz7","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:39:22.677Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfinimj_dj2gz7","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":554,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:39:22.677Z] [LEG_SUBMIT] {"executionId":"exec_mlfinimj_dj2gz7","leg":"A","venue":"polymarket","side":"yes","price":0.62,"qty":50,"clientOrderId":"polymarket_A_mlfinimj_s6l6"}
+[2026-02-09T18:39:33.293Z] [BTC_PRICE] {"price":70309.6}
+[2026-02-09T18:39:41.441Z] [EXECUTION_START] {"executionId":"exec_mlfinwx9_3pmvy2","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.06210000000000008,"legA":{"venue":"polymarket","side":"yes","price":0.69},"legB":{"venue":"kalshi","side":"no","price":0.21}}
+[2026-02-09T18:39:41.441Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfinwx9_3pmvy2","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":788,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:39:41.441Z] [LEG_SUBMIT] {"executionId":"exec_mlfinwx9_3pmvy2","leg":"A","venue":"polymarket","side":"yes","price":0.69,"qty":50,"clientOrderId":"polymarket_A_mlfinwx9_y8ti"}
+[2026-02-09T18:39:41.441Z] [LEG_FAIL] {"executionId":"exec_mlfinwx9_3pmvy2","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:39:47.762Z] [LEG_SUBMIT] {"executionId":"exec_mlfio1u1_cj0fye","leg":"A","venue":"polymarket","side":"yes","price":0.67,"qty":18,"clientOrderId":"polymarket_A_mlfio1u1_k6d1"}
+[2026-02-09T18:39:47.762Z] [LEG_FILL] {"executionId":"exec_mlfio1u1_cj0fye","leg":"A","venue":"polymarket","orderId":"0x87ec914cef6aae49e6eff78cc47be640c27882e41eaba6a58c63c57d56361097","fillQty":18,"fillPrice":0.67,"latencyMs":745}
+[2026-02-09T18:39:47.762Z] [EXECUTION_START] {"executionId":"exec_mlfio1u1_cj0fye","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.051799999999999964,"legA":{"venue":"polymarket","side":"yes","price":0.67},"legB":{"venue":"kalshi","side":"no","price":0.24}}
+[2026-02-09T18:39:48.014Z] [LEG_SUBMIT] {"executionId":"exec_mlfio1u1_cj0fye","leg":"B","venue":"kalshi","side":"no","price":0.24,"qty":18,"clientOrderId":"kalshi_B_mlfio1u1_301l"}
+[2026-02-09T18:39:48.014Z] [UNWIND_START] {"executionId":"exec_mlfio1u1_cj0fye","reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","legToUnwind":{"venue":"polymarket","side":"yes","fillPrice":0.67}}
+[2026-02-09T18:39:48.014Z] [LEG_FAIL] {"executionId":"exec_mlfio1u1_cj0fye","leg":"B","venue":"kalshi","reason":"rejected","error":"fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)"}
+[2026-02-09T18:39:48.294Z] [BTC_PRICE] {"price":70307.3}
+[2026-02-09T18:39:54.153Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfio1u1_cj0fye","status":"unwound","success":false,"realizedPnl":0,"latencyMs":7136,"legALatencyMs":745,"legBLatencyMs":null}
+[2026-02-09T18:39:54.153Z] [UNWIND_RESULT] {"executionId":"exec_mlfio1u1_cj0fye","success":true,"unwindPrice":0.68,"realizedLoss":0}
+[2026-02-09T18:39:54.154Z] [COOLDOWN] {"reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","durationMs":3000}
+[2026-02-09T18:40:01.812Z] [EXECUTION_START] {"executionId":"exec_mlfiocr8_redh2y","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.04240000000000007,"legA":{"venue":"polymarket","side":"yes","price":0.71},"legB":{"venue":"kalshi","side":"no","price":0.21}}
+[2026-02-09T18:40:01.812Z] [LEG_FAIL] {"executionId":"exec_mlfiocr8_redh2y","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:40:01.812Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfiocr8_redh2y","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":640,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:40:01.812Z] [LEG_SUBMIT] {"executionId":"exec_mlfiocr8_redh2y","leg":"A","venue":"polymarket","side":"yes","price":0.71,"qty":50,"clientOrderId":"polymarket_A_mlfiocr8_vfsf"}
+[2026-02-09T18:40:03.293Z] [BTC_PRICE] {"price":70350.6}
+[2026-02-09T18:40:12.228Z] [EXECUTION_START] {"executionId":"exec_mlfiokb9_7vmvj9","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.041300000000000066,"legA":{"venue":"polymarket","side":"yes","price":0.62},"legB":{"venue":"kalshi","side":"no","price":0.3}}
+[2026-02-09T18:40:12.228Z] [LEG_SUBMIT] {"executionId":"exec_mlfiokb9_7vmvj9","leg":"A","venue":"polymarket","side":"yes","price":0.62,"qty":50,"clientOrderId":"polymarket_A_mlfiokb9_3pep"}
+[2026-02-09T18:40:12.228Z] [LEG_FILL] {"executionId":"exec_mlfiokb9_7vmvj9","leg":"A","venue":"polymarket","orderId":"0xcb01039adc55c80f4441b664c9cdfb8329c64e9f18c759dd2b684456eaf55665","fillQty":50.516128,"fillPrice":0.6136653822715786,"latencyMs":1263}
+[2026-02-09T18:40:12.321Z] [LEG_FAIL] {"executionId":"exec_mlfiokb9_7vmvj9","leg":"B","venue":"kalshi","reason":"rejected","error":"fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)"}
+[2026-02-09T18:40:12.321Z] [LEG_SUBMIT] {"executionId":"exec_mlfiokb9_7vmvj9","leg":"B","venue":"kalshi","side":"no","price":0.3,"qty":50,"clientOrderId":"kalshi_B_mlfiokb9_61mm"}
+[2026-02-09T18:40:12.321Z] [UNWIND_START] {"executionId":"exec_mlfiokb9_7vmvj9","reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","legToUnwind":{"venue":"polymarket","side":"yes","fillPrice":0.6136653822715786}}
+[2026-02-09T18:40:18.294Z] [BTC_PRICE] {"price":70220.3}
+[2026-02-09T18:40:22.404Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfiokb9_7vmvj9","status":"unwound","success":false,"realizedPnl":-8.151588078201856,"latencyMs":11439,"legALatencyMs":1263,"legBLatencyMs":null}
+[2026-02-09T18:40:22.404Z] [UNWIND_RESULT] {"executionId":"exec_mlfiokb9_7vmvj9","success":true,"unwindPrice":0.45,"realizedLoss":8.151588078201856}
+[2026-02-09T18:40:22.405Z] [COOLDOWN] {"reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","durationMs":3000}
+[2026-02-09T18:40:26.002Z] [EXECUTION_START] {"executionId":"exec_mlfiovgr_b49ato","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.09290000000000001,"legA":{"venue":"polymarket","side":"yes","price":0.46},"legB":{"venue":"kalshi","side":"no","price":0.41}}
+[2026-02-09T18:40:26.002Z] [LEG_FILL] {"executionId":"exec_mlfiovgr_b49ato","leg":"A","venue":"polymarket","orderId":"0x4a07001fc2e8e97489be5c2d6d1c54aab9f2f10a36c9659edec99dbeb31b1049","fillQty":50,"fillPrice":0.46,"latencyMs":583}
+[2026-02-09T18:40:26.002Z] [LEG_SUBMIT] {"executionId":"exec_mlfiovgr_b49ato","leg":"A","venue":"polymarket","side":"yes","price":0.46,"qty":50,"clientOrderId":"polymarket_A_mlfiovgr_bcbh"}
+[2026-02-09T18:40:26.251Z] [LEG_SUBMIT] {"executionId":"exec_mlfiovgr_b49ato","leg":"B","venue":"kalshi","side":"no","price":0.41,"qty":50,"clientOrderId":"kalshi_B_mlfiovgr_zhtf"}
+[2026-02-09T18:40:26.251Z] [LEG_FILL] {"executionId":"exec_mlfiovgr_b49ato","leg":"B","venue":"kalshi","orderId":"27181de9-8a15-4108-9827-9c2b527567a3","fillQty":50,"fillPrice":0.41,"latencyMs":249}
+[2026-02-09T18:40:26.252Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfiovgr_b49ato","status":"success","success":true,"realizedPnl":6.5,"latencyMs":832,"legALatencyMs":583,"legBLatencyMs":249}
+[2026-02-09T18:40:26.822Z] [LEG_SUBMIT] {"executionId":"exec_mlfiow47_vt4sop","leg":"A","venue":"polymarket","side":"yes","price":0.46,"qty":50,"clientOrderId":"polymarket_A_mlfiow47_kke2"}
+[2026-02-09T18:40:26.822Z] [LEG_FILL] {"executionId":"exec_mlfiow47_vt4sop","leg":"A","venue":"polymarket","orderId":"0x925dfbeae1d6eb18f7fca73ef6c9fa4da1db000bd219a24ac387cc66465ae4d6","fillQty":50,"fillPrice":0.46,"latencyMs":559}
+[2026-02-09T18:40:26.822Z] [EXECUTION_START] {"executionId":"exec_mlfiow47_vt4sop","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.09290000000000001,"legA":{"venue":"polymarket","side":"yes","price":0.46},"legB":{"venue":"kalshi","side":"no","price":0.41}}
+[2026-02-09T18:40:27.070Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfiow47_vt4sop","status":"success","success":true,"realizedPnl":6.5,"latencyMs":807,"legALatencyMs":559,"legBLatencyMs":248}
+[2026-02-09T18:40:27.070Z] [LEG_SUBMIT] {"executionId":"exec_mlfiow47_vt4sop","leg":"B","venue":"kalshi","side":"no","price":0.41,"qty":50,"clientOrderId":"kalshi_B_mlfiow47_shmw"}
+[2026-02-09T18:40:27.070Z] [LEG_FILL] {"executionId":"exec_mlfiow47_vt4sop","leg":"B","venue":"kalshi","orderId":"5fa53f2d-bc19-43a5-972b-871448679f93","fillQty":50,"fillPrice":0.41,"latencyMs":248}
+[2026-02-09T18:40:27.666Z] [EXECUTION_START] {"executionId":"exec_mlfiowqy_k1pm9c","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.09290000000000001,"legA":{"venue":"polymarket","side":"yes","price":0.46},"legB":{"venue":"kalshi","side":"no","price":0.41}}
+[2026-02-09T18:40:27.666Z] [LEG_FILL] {"executionId":"exec_mlfiowqy_k1pm9c","leg":"A","venue":"polymarket","orderId":"0xe19569e9a802acd86ff24552b5d5876a194168f1170b6db6976809f0596f3836","fillQty":50,"fillPrice":0.46,"latencyMs":584}
+[2026-02-09T18:40:27.666Z] [LEG_SUBMIT] {"executionId":"exec_mlfiowqy_k1pm9c","leg":"A","venue":"polymarket","side":"yes","price":0.46,"qty":50,"clientOrderId":"polymarket_A_mlfiowqy_bgix"}
+[2026-02-09T18:40:27.755Z] [LEG_SUBMIT] {"executionId":"exec_mlfiowqy_k1pm9c","leg":"B","venue":"kalshi","side":"no","price":0.41,"qty":50,"clientOrderId":"kalshi_B_mlfiowqy_5hin"}
+[2026-02-09T18:40:27.755Z] [UNWIND_START] {"executionId":"exec_mlfiowqy_k1pm9c","reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","legToUnwind":{"venue":"polymarket","side":"yes","fillPrice":0.46}}
+[2026-02-09T18:40:27.755Z] [LEG_FAIL] {"executionId":"exec_mlfiowqy_k1pm9c","leg":"B","venue":"kalshi","reason":"rejected","error":"fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)"}
+[2026-02-09T18:40:30.850Z] [UNWIND_RESULT] {"executionId":"exec_mlfiowqy_k1pm9c","success":true,"unwindPrice":0.46000000000000013,"realizedLoss":0}
+[2026-02-09T18:40:30.851Z] [COOLDOWN] {"reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","durationMs":3000}
+[2026-02-09T18:40:30.850Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfiowqy_k1pm9c","status":"unwound","success":false,"realizedPnl":0,"latencyMs":3768,"legALatencyMs":584,"legBLatencyMs":null}
+[2026-02-09T18:40:33.294Z] [BTC_PRICE] {"price":70250}
+[2026-02-09T18:40:34.996Z] [EXECUTION_START] {"executionId":"exec_mlfip1zk_7sbeoc","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.061899999999999976,"legA":{"venue":"polymarket","side":"yes","price":0.52},"legB":{"venue":"kalshi","side":"no","price":0.38}}
+[2026-02-09T18:40:34.997Z] [LEG_SUBMIT] {"executionId":"exec_mlfip1zk_7sbeoc","leg":"A","venue":"polymarket","side":"yes","price":0.52,"qty":50,"clientOrderId":"polymarket_A_mlfip1zk_cygd"}
+[2026-02-09T18:40:34.997Z] [LEG_FILL] {"executionId":"exec_mlfip1zk_7sbeoc","leg":"A","venue":"polymarket","orderId":"0x687b2853853f5166ec9f89c71143c34cf97d37c27b29668f07aa00d28df8692c","fillQty":50,"fillPrice":0.52,"latencyMs":1125}
+[2026-02-09T18:40:35.087Z] [LEG_SUBMIT] {"executionId":"exec_mlfip1zk_7sbeoc","leg":"B","venue":"kalshi","side":"no","price":0.38,"qty":50,"clientOrderId":"kalshi_B_mlfip1zk_9gv1"}
+[2026-02-09T18:40:35.087Z] [LEG_FAIL] {"executionId":"exec_mlfip1zk_7sbeoc","leg":"B","venue":"kalshi","reason":"rejected","error":"fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)"}
+[2026-02-09T18:40:35.087Z] [UNWIND_START] {"executionId":"exec_mlfip1zk_7sbeoc","reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","legToUnwind":{"venue":"polymarket","side":"yes","fillPrice":0.52}}
+[2026-02-09T18:40:41.117Z] [UNWIND_RESULT] {"executionId":"exec_mlfip1zk_7sbeoc","success":true,"unwindPrice":0.44,"realizedLoss":4.000000000000001}
+[2026-02-09T18:40:41.118Z] [COOLDOWN] {"reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","durationMs":3000}
+[2026-02-09T18:40:41.117Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfip1zk_7sbeoc","status":"unwound","success":false,"realizedPnl":-4.000000000000001,"latencyMs":7245,"legALatencyMs":1124,"legBLatencyMs":null}
+[2026-02-09T18:40:44.740Z] [EXECUTION_START] {"executionId":"exec_mlfip9wa_xmfq1e","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07289999999999999,"legA":{"venue":"polymarket","side":"yes","price":0.46},"legB":{"venue":"kalshi","side":"no","price":0.43}}
+[2026-02-09T18:40:44.741Z] [LEG_FAIL] {"executionId":"exec_mlfip9wa_xmfq1e","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:40:44.741Z] [LEG_SUBMIT] {"executionId":"exec_mlfip9wa_xmfq1e","leg":"A","venue":"polymarket","side":"yes","price":0.46,"qty":5,"clientOrderId":"polymarket_A_mlfip9wa_j0i0"}
+[2026-02-09T18:40:44.741Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfip9wa_xmfq1e","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":619,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:40:45.320Z] [EXECUTION_START] {"executionId":"exec_mlfipadm_e5jro5","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.0927,"legA":{"venue":"polymarket","side":"yes","price":0.47},"legB":{"venue":"kalshi","side":"no","price":0.4}}
+[2026-02-09T18:40:45.320Z] [LEG_FAIL] {"executionId":"exec_mlfipadm_e5jro5","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:40:45.320Z] [LEG_SUBMIT] {"executionId":"exec_mlfipadm_e5jro5","leg":"A","venue":"polymarket","side":"yes","price":0.47,"qty":50,"clientOrderId":"polymarket_A_mlfipadm_fdpg"}
+[2026-02-09T18:40:45.320Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfipadm_e5jro5","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":574,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:40:45.933Z] [EXECUTION_START] {"executionId":"exec_mlfipatm_xm0fnj","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07229999999999999,"legA":{"venue":"polymarket","side":"yes","price":0.49},"legB":{"venue":"kalshi","side":"no","price":0.4}}
+[2026-02-09T18:40:45.933Z] [LEG_SUBMIT] {"executionId":"exec_mlfipatm_xm0fnj","leg":"A","venue":"polymarket","side":"yes","price":0.49,"qty":50,"clientOrderId":"polymarket_A_mlfipatm_gwwd"}
+[2026-02-09T18:40:45.933Z] [LEG_FAIL] {"executionId":"exec_mlfipatm_xm0fnj","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:40:45.933Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfipatm_xm0fnj","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":611,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:40:46.756Z] [EXECUTION_START] {"executionId":"exec_mlfipban_0ovh2v","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07209999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.5},"legB":{"venue":"kalshi","side":"no","price":0.39}}
+[2026-02-09T18:40:46.756Z] [LEG_SUBMIT] {"executionId":"exec_mlfipban_0ovh2v","leg":"A","venue":"polymarket","side":"yes","price":0.5,"qty":50,"clientOrderId":"polymarket_A_mlfipban_kgvn"}
+[2026-02-09T18:40:46.756Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfipban_0ovh2v","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":821,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:40:46.756Z] [LEG_FAIL] {"executionId":"exec_mlfipban_0ovh2v","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:40:47.663Z] [EXECUTION_START] {"executionId":"exec_mlfipbxh_4798y3","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.11199999999999992,"legA":{"venue":"polymarket","side":"yes","price":0.51},"legB":{"venue":"kalshi","side":"no","price":0.34}}
+[2026-02-09T18:40:47.663Z] [LEG_FAIL] {"executionId":"exec_mlfipbxh_4798y3","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:40:47.663Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfipbxh_4798y3","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":906,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:40:47.663Z] [LEG_SUBMIT] {"executionId":"exec_mlfipbxh_4798y3","leg":"A","venue":"polymarket","side":"yes","price":0.51,"qty":50,"clientOrderId":"polymarket_A_mlfipbxh_0b1b"}
+[2026-02-09T18:40:48.294Z] [BTC_PRICE] {"price":70257.3}
+[2026-02-09T18:40:48.532Z] [LEG_FAIL] {"executionId":"exec_mlfipcmo_si5t22","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:40:48.532Z] [LEG_SUBMIT] {"executionId":"exec_mlfipcmo_si5t22","leg":"A","venue":"polymarket","side":"yes","price":0.54,"qty":50,"clientOrderId":"polymarket_A_mlfipcmo_eod8"}
+[2026-02-09T18:40:48.532Z] [EXECUTION_START] {"executionId":"exec_mlfipcmo_si5t22","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08159999999999988,"legA":{"venue":"polymarket","side":"yes","price":0.54},"legB":{"venue":"kalshi","side":"no","price":0.34}}
+[2026-02-09T18:40:48.533Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfipcmo_si5t22","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":868,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:40:49.430Z] [EXECUTION_START] {"executionId":"exec_mlfipdjr_q5xqw2","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.06149999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.55},"legB":{"venue":"kalshi","side":"no","price":0.35}}
+[2026-02-09T18:40:49.430Z] [LEG_FILL] {"executionId":"exec_mlfipdjr_q5xqw2","leg":"A","venue":"polymarket","orderId":"0xb178cdb5dcd6cfb498cfa9cc95332c7731475b14500c5204401bf700a2560e96","fillQty":50,"fillPrice":0.55,"latencyMs":575}
+[2026-02-09T18:40:49.430Z] [LEG_SUBMIT] {"executionId":"exec_mlfipdjr_q5xqw2","leg":"A","venue":"polymarket","side":"yes","price":0.55,"qty":50,"clientOrderId":"polymarket_A_mlfipdjr_734x"}
+[2026-02-09T18:40:49.519Z] [LEG_FILL] {"executionId":"exec_mlfipdjr_q5xqw2","leg":"B","venue":"kalshi","orderId":"71931099-528e-45b5-829c-b4b666efcc6c","fillQty":50,"fillPrice":0.35,"latencyMs":89}
+[2026-02-09T18:40:49.519Z] [LEG_SUBMIT] {"executionId":"exec_mlfipdjr_q5xqw2","leg":"B","venue":"kalshi","side":"no","price":0.35,"qty":50,"clientOrderId":"kalshi_B_mlfipdjr_ss03"}
+[2026-02-09T18:40:49.519Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfipdjr_q5xqw2","status":"success","success":true,"realizedPnl":5,"latencyMs":664,"legALatencyMs":575,"legBLatencyMs":89}
+[2026-02-09T18:40:50.116Z] [EXECUTION_START] {"executionId":"exec_mlfipe2h_ysp1i4","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.06149999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.55},"legB":{"venue":"kalshi","side":"no","price":0.35}}
+[2026-02-09T18:40:50.116Z] [LEG_FILL] {"executionId":"exec_mlfipe2h_ysp1i4","leg":"A","venue":"polymarket","orderId":"0x6fff3d8856cad3effadc832a1e544677b50e2d2512235cfc7e2697910df7b771","fillQty":50,"fillPrice":0.55,"latencyMs":587}
+[2026-02-09T18:40:50.116Z] [LEG_SUBMIT] {"executionId":"exec_mlfipe2h_ysp1i4","leg":"A","venue":"polymarket","side":"yes","price":0.55,"qty":50,"clientOrderId":"polymarket_A_mlfipe2h_1rn1"}
+[2026-02-09T18:40:50.207Z] [LEG_SUBMIT] {"executionId":"exec_mlfipe2h_ysp1i4","leg":"B","venue":"kalshi","side":"no","price":0.35,"qty":50,"clientOrderId":"kalshi_B_mlfipe2h_ncat"}
+[2026-02-09T18:40:50.207Z] [LEG_FAIL] {"executionId":"exec_mlfipe2h_ysp1i4","leg":"B","venue":"kalshi","reason":"rejected","error":"fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)"}
+[2026-02-09T18:40:50.207Z] [UNWIND_START] {"executionId":"exec_mlfipe2h_ysp1i4","reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","legToUnwind":{"venue":"polymarket","side":"yes","fillPrice":0.55}}
+[2026-02-09T18:40:54.693Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfipe2h_ysp1i4","status":"unwound","success":false,"realizedPnl":-1.0000000000000009,"latencyMs":5164,"legALatencyMs":587,"legBLatencyMs":null}
+[2026-02-09T18:40:54.693Z] [UNWIND_RESULT] {"executionId":"exec_mlfipe2h_ysp1i4","success":true,"unwindPrice":0.53,"realizedLoss":1.0000000000000009}
+[2026-02-09T18:40:54.695Z] [COOLDOWN] {"reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","durationMs":3000}
+[2026-02-09T18:40:58.256Z] [LEG_SUBMIT] {"executionId":"exec_mlfipkdb_pcuncn","leg":"A","venue":"polymarket","side":"yes","price":0.62,"qty":50,"clientOrderId":"polymarket_A_mlfipkdb_91mb"}
+[2026-02-09T18:40:58.256Z] [EXECUTION_START] {"executionId":"exec_mlfipkdb_pcuncn","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.06129999999999997,"legA":{"venue":"polymarket","side":"yes","price":0.62},"legB":{"venue":"kalshi","side":"no","price":0.28}}
+[2026-02-09T18:40:58.256Z] [LEG_FILL] {"executionId":"exec_mlfipkdb_pcuncn","leg":"A","venue":"polymarket","orderId":"0x76aa5558c5e71a87e4ddf0ecc55fab2754c6ce3c26cda6f40b650c9a940fd6fb","fillQty":50,"fillPrice":0.62,"latencyMs":561}
+[2026-02-09T18:40:58.512Z] [LEG_SUBMIT] {"executionId":"exec_mlfipkdb_pcuncn","leg":"B","venue":"kalshi","side":"no","price":0.28,"qty":50,"clientOrderId":"kalshi_B_mlfipkdb_i9vv"}
+[2026-02-09T18:40:58.512Z] [LEG_FILL] {"executionId":"exec_mlfipkdb_pcuncn","leg":"B","venue":"kalshi","orderId":"c17be7c4-c86e-4b9e-b869-dee113b3076d","fillQty":50,"fillPrice":0.28,"latencyMs":256}
+[2026-02-09T18:40:58.512Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfipkdb_pcuncn","status":"success","success":true,"realizedPnl":5,"latencyMs":817,"legALatencyMs":561,"legBLatencyMs":256}
+[2026-02-09T18:40:59.215Z] [EXECUTION_START] {"executionId":"exec_mlfipl0t_ktwv27","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.06129999999999997,"legA":{"venue":"polymarket","side":"yes","price":0.62},"legB":{"venue":"kalshi","side":"no","price":0.28}}
+[2026-02-09T18:40:59.215Z] [LEG_SUBMIT] {"executionId":"exec_mlfipl0t_ktwv27","leg":"A","venue":"polymarket","side":"yes","price":0.62,"qty":50,"clientOrderId":"polymarket_A_mlfipl0t_gvoz"}
+[2026-02-09T18:40:59.215Z] [LEG_FILL] {"executionId":"exec_mlfipl0t_ktwv27","leg":"A","venue":"polymarket","orderId":"0xcd3f1fe043f49bb752eb225673a3c7e66880f39d25c6e73f093273a9d7d4d1de","fillQty":50,"fillPrice":0.62,"latencyMs":674}
+[2026-02-09T18:40:59.469Z] [LEG_SUBMIT] {"executionId":"exec_mlfipl0t_ktwv27","leg":"B","venue":"kalshi","side":"no","price":0.28,"qty":50,"clientOrderId":"kalshi_B_mlfipl0t_lpjh"}
+[2026-02-09T18:40:59.469Z] [LEG_FAIL] {"executionId":"exec_mlfipl0t_ktwv27","leg":"B","venue":"kalshi","reason":"rejected","error":"fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)"}
+[2026-02-09T18:40:59.469Z] [UNWIND_START] {"executionId":"exec_mlfipl0t_ktwv27","reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","legToUnwind":{"venue":"polymarket","side":"yes","fillPrice":0.62}}
+[2026-02-09T18:41:03.295Z] [BTC_PRICE] {"price":70272.5}
+[2026-02-09T18:41:06.998Z] [UNWIND_RESULT] {"executionId":"exec_mlfipl0t_ktwv27","success":true,"unwindPrice":0.6636,"realizedLoss":0}
+[2026-02-09T18:41:06.998Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfipl0t_ktwv27","status":"unwound","success":false,"realizedPnl":0,"latencyMs":8457,"legALatencyMs":674,"legBLatencyMs":null}
+[2026-02-09T18:41:07.000Z] [COOLDOWN] {"reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","durationMs":3000}
+[2026-02-09T18:41:10.731Z] [LEG_FILL] {"executionId":"exec_mlfiptw6_nhib7f","leg":"A","venue":"polymarket","orderId":"0x57f5799517079dde6f34be5038ab22de139ad062001d79284592d27467bbe796","fillQty":33.478258,"fillPrice":0.6899999994025974,"latencyMs":693}
+[2026-02-09T18:41:10.731Z] [LEG_SUBMIT] {"executionId":"exec_mlfiptw6_nhib7f","leg":"A","venue":"polymarket","side":"yes","price":0.7,"qty":33,"clientOrderId":"polymarket_A_mlfiptw6_5uk0"}
+[2026-02-09T18:41:10.731Z] [EXECUTION_START] {"executionId":"exec_mlfiptw6_nhib7f","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.04220000000000007,"legA":{"venue":"polymarket","side":"yes","price":0.7},"legB":{"venue":"kalshi","side":"no","price":0.22}}
+[2026-02-09T18:41:10.977Z] [LEG_SUBMIT] {"executionId":"exec_mlfiptw6_nhib7f","leg":"B","venue":"kalshi","side":"no","price":0.22,"qty":33,"clientOrderId":"kalshi_B_mlfiptw6_1m5c"}
+[2026-02-09T18:41:10.977Z] [LEG_FILL] {"executionId":"exec_mlfiptw6_nhib7f","leg":"B","venue":"kalshi","orderId":"86742faa-c56f-451a-9df0-577cb3b3d5d2","fillQty":33,"fillPrice":0.22,"latencyMs":246}
+[2026-02-09T18:41:10.977Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfiptw6_nhib7f","status":"success","success":true,"realizedPnl":2.6400020000000026,"latencyMs":939,"legALatencyMs":693,"legBLatencyMs":246}
+[2026-02-09T18:41:18.295Z] [BTC_PRICE] {"price":70295.5}
+[2026-02-09T18:41:33.295Z] [BTC_PRICE] {"price":70286.9}
+[2026-02-09T18:41:48.296Z] [BTC_PRICE] {"price":70304.1}
+[2026-02-09T18:42:03.296Z] [BTC_PRICE] {"price":70356.9}
+[2026-02-09T18:42:18.296Z] [BTC_PRICE] {"price":70353.1}
+[2026-02-09T18:42:33.296Z] [BTC_PRICE] {"price":70333.6}
+[2026-02-09T18:42:47.362Z] [EXECUTION_START] {"executionId":"exec_mlfirwk0_eypxny","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.1151999999999999,"legA":{"venue":"polymarket","side":"yes","price":0.81},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:47.362Z] [LEG_SUBMIT] {"executionId":"exec_mlfirwk0_eypxny","leg":"A","venue":"polymarket","side":"yes","price":0.81,"qty":50,"clientOrderId":"polymarket_A_mlfirwk0_tr79"}
+[2026-02-09T18:42:47.362Z] [LEG_FILL] {"executionId":"exec_mlfirwk0_eypxny","leg":"A","venue":"polymarket","orderId":"0x82aa2e6e29a9f0ed80cc33429453c224f40ac2f8a3f9bf11cf5f40baec79fbea","fillQty":50,"fillPrice":0.81,"latencyMs":562}
+[2026-02-09T18:42:47.618Z] [LEG_SUBMIT] {"executionId":"exec_mlfirwk0_eypxny","leg":"B","venue":"kalshi","side":"no","price":0.05,"qty":50,"clientOrderId":"kalshi_B_mlfirwk0_gkrt"}
+[2026-02-09T18:42:47.619Z] [LEG_FILL] {"executionId":"exec_mlfirwk0_eypxny","leg":"B","venue":"kalshi","orderId":"69fd1b46-f083-4fa7-a268-04d0922bd195","fillQty":50,"fillPrice":0.05,"latencyMs":257}
+[2026-02-09T18:42:47.619Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfirwk0_eypxny","status":"success","success":true,"realizedPnl":7,"latencyMs":819,"legALatencyMs":562,"legBLatencyMs":256}
+[2026-02-09T18:42:48.189Z] [EXECUTION_START] {"executionId":"exec_mlfirx6z_sikvyo","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.1151999999999999,"legA":{"venue":"polymarket","side":"yes","price":0.81},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:48.189Z] [LEG_SUBMIT] {"executionId":"exec_mlfirx6z_sikvyo","leg":"A","venue":"polymarket","side":"yes","price":0.81,"qty":50,"clientOrderId":"polymarket_A_mlfirx6z_lqoz"}
+[2026-02-09T18:42:48.189Z] [LEG_FILL] {"executionId":"exec_mlfirx6z_sikvyo","leg":"A","venue":"polymarket","orderId":"0x80706a6ffdb923e3977af9b9c9e769031d6431ef1afd92a871ccc9a80ae53c11","fillQty":50,"fillPrice":0.81,"latencyMs":562}
+[2026-02-09T18:42:48.278Z] [LEG_SUBMIT] {"executionId":"exec_mlfirx6z_sikvyo","leg":"B","venue":"kalshi","side":"no","price":0.05,"qty":50,"clientOrderId":"kalshi_B_mlfirx6z_y0u9"}
+[2026-02-09T18:42:48.278Z] [LEG_FILL] {"executionId":"exec_mlfirx6z_sikvyo","leg":"B","venue":"kalshi","orderId":"ecbbe4eb-6349-411d-a92c-52d5c39d8857","fillQty":50,"fillPrice":0.05,"latencyMs":89}
+[2026-02-09T18:42:48.278Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfirx6z_sikvyo","status":"success","success":true,"realizedPnl":7,"latencyMs":651,"legALatencyMs":562,"legBLatencyMs":89}
+[2026-02-09T18:42:48.297Z] [BTC_PRICE] {"price":70334.9}
+[2026-02-09T18:42:48.884Z] [EXECUTION_START] {"executionId":"exec_mlfirxqc_pn2cv8","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.1151999999999999,"legA":{"venue":"polymarket","side":"yes","price":0.81},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:48.884Z] [LEG_FILL] {"executionId":"exec_mlfirxqc_pn2cv8","leg":"A","venue":"polymarket","orderId":"0xec7eb23485ab0e73024d1b0b6f886dcfc96ee689c84d2fa0971e195e24a02f20","fillQty":50,"fillPrice":0.81,"latencyMs":560}
+[2026-02-09T18:42:48.884Z] [LEG_SUBMIT] {"executionId":"exec_mlfirxqc_pn2cv8","leg":"A","venue":"polymarket","side":"yes","price":0.81,"qty":50,"clientOrderId":"polymarket_A_mlfirxqc_4vxw"}
+[2026-02-09T18:42:49.132Z] [LEG_SUBMIT] {"executionId":"exec_mlfirxqc_pn2cv8","leg":"B","venue":"kalshi","side":"no","price":0.05,"qty":50,"clientOrderId":"kalshi_B_mlfirxqc_4pnd"}
+[2026-02-09T18:42:49.133Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfirxqc_pn2cv8","status":"success","success":true,"realizedPnl":7,"latencyMs":808,"legALatencyMs":560,"legBLatencyMs":248}
+[2026-02-09T18:42:49.132Z] [LEG_FILL] {"executionId":"exec_mlfirxqc_pn2cv8","leg":"B","venue":"kalshi","orderId":"b6a38129-e7d8-467c-aa89-5f897cb8294e","fillQty":50,"fillPrice":0.05,"latencyMs":248}
+[2026-02-09T18:42:49.682Z] [EXECUTION_START] {"executionId":"exec_mlfiryda_acguxm","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.1151999999999999,"legA":{"venue":"polymarket","side":"yes","price":0.81},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:49.682Z] [LEG_FAIL] {"executionId":"exec_mlfiryda_acguxm","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:49.682Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfiryda_acguxm","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":532,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:49.682Z] [LEG_SUBMIT] {"executionId":"exec_mlfiryda_acguxm","leg":"A","venue":"polymarket","side":"yes","price":0.81,"qty":50,"clientOrderId":"polymarket_A_mlfiryda_zp19"}
+[2026-02-09T18:42:50.294Z] [EXECUTION_START] {"executionId":"exec_mlfirys4_4p553v","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.1151999999999999,"legA":{"venue":"polymarket","side":"yes","price":0.81},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:50.294Z] [LEG_FAIL] {"executionId":"exec_mlfirys4_4p553v","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:50.294Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfirys4_4p553v","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":610,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:50.294Z] [LEG_SUBMIT] {"executionId":"exec_mlfirys4_4p553v","leg":"A","venue":"polymarket","side":"yes","price":0.81,"qty":50,"clientOrderId":"polymarket_A_mlfirys4_64ff"}
+[2026-02-09T18:42:50.830Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfirz93_lcjem0","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":535,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:50.830Z] [EXECUTION_START] {"executionId":"exec_mlfirz93_lcjem0","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.10550000000000001,"legA":{"venue":"polymarket","side":"yes","price":0.82},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:50.830Z] [LEG_FAIL] {"executionId":"exec_mlfirz93_lcjem0","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:50.830Z] [LEG_SUBMIT] {"executionId":"exec_mlfirz93_lcjem0","leg":"A","venue":"polymarket","side":"yes","price":0.82,"qty":50,"clientOrderId":"polymarket_A_mlfirz93_lc4m"}
+[2026-02-09T18:42:51.359Z] [LEG_SUBMIT] {"executionId":"exec_mlfirznz_u7qi7k","leg":"A","venue":"polymarket","side":"yes","price":0.84,"qty":48,"clientOrderId":"polymarket_A_mlfirznz_544c"}
+[2026-02-09T18:42:51.359Z] [LEG_FAIL] {"executionId":"exec_mlfirznz_u7qi7k","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:51.360Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfirznz_u7qi7k","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":528,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:51.359Z] [EXECUTION_START] {"executionId":"exec_mlfirznz_u7qi7k","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08619999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.84},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:51.895Z] [EXECUTION_START] {"executionId":"exec_mlfis02t_vpie51","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07649999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.85},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:51.895Z] [LEG_FAIL] {"executionId":"exec_mlfis02t_vpie51","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:51.895Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis02t_vpie51","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":530,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:51.895Z] [LEG_SUBMIT] {"executionId":"exec_mlfis02t_vpie51","leg":"A","venue":"polymarket","side":"yes","price":0.85,"qty":50,"clientOrderId":"polymarket_A_mlfis02t_79w5"}
+[2026-02-09T18:42:52.460Z] [EXECUTION_START] {"executionId":"exec_mlfis0ik_a1s9rh","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07649999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.85},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:52.460Z] [LEG_FAIL] {"executionId":"exec_mlfis0ik_a1s9rh","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:52.460Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis0ik_a1s9rh","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":528,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:52.460Z] [LEG_SUBMIT] {"executionId":"exec_mlfis0ik_a1s9rh","leg":"A","venue":"polymarket","side":"yes","price":0.85,"qty":50,"clientOrderId":"polymarket_A_mlfis0ik_hm0y"}
+[2026-02-09T18:42:52.991Z] [LEG_FAIL] {"executionId":"exec_mlfis0x9_t3t2wl","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:52.991Z] [EXECUTION_START] {"executionId":"exec_mlfis0x9_t3t2wl","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07649999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.85},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:52.991Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis0x9_t3t2wl","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":530,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:52.991Z] [LEG_SUBMIT] {"executionId":"exec_mlfis0x9_t3t2wl","leg":"A","venue":"polymarket","side":"yes","price":0.85,"qty":50,"clientOrderId":"polymarket_A_mlfis0x9_edu1"}
+[2026-02-09T18:42:53.535Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis1cg_vvv757","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":527,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:53.535Z] [LEG_FAIL] {"executionId":"exec_mlfis1cg_vvv757","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:53.535Z] [LEG_SUBMIT] {"executionId":"exec_mlfis1cg_vvv757","leg":"A","venue":"polymarket","side":"yes","price":0.85,"qty":50,"clientOrderId":"polymarket_A_mlfis1cg_6p6w"}
+[2026-02-09T18:42:53.535Z] [EXECUTION_START] {"executionId":"exec_mlfis1cg_vvv757","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07649999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.85},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:54.065Z] [EXECUTION_START] {"executionId":"exec_mlfis1r7_yzc605","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07649999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.85},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:54.065Z] [LEG_SUBMIT] {"executionId":"exec_mlfis1r7_yzc605","leg":"A","venue":"polymarket","side":"yes","price":0.85,"qty":50,"clientOrderId":"polymarket_A_mlfis1r7_ndzh"}
+[2026-02-09T18:42:54.065Z] [LEG_FAIL] {"executionId":"exec_mlfis1r7_yzc605","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:54.065Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis1r7_yzc605","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":526,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:54.598Z] [LEG_SUBMIT] {"executionId":"exec_mlfis25u_un1tdo","leg":"A","venue":"polymarket","side":"yes","price":0.85,"qty":50,"clientOrderId":"polymarket_A_mlfis25u_3m0r"}
+[2026-02-09T18:42:54.598Z] [LEG_FAIL] {"executionId":"exec_mlfis25u_un1tdo","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:54.598Z] [EXECUTION_START] {"executionId":"exec_mlfis25u_un1tdo","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07649999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.85},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:54.598Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis25u_un1tdo","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":532,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:55.177Z] [EXECUTION_START] {"executionId":"exec_mlfis2m3_jkz1sp","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.0865,"legA":{"venue":"polymarket","side":"yes","price":0.85},"legB":{"venue":"kalshi","side":"no","price":0.04}}
+[2026-02-09T18:42:55.177Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis2m3_jkz1sp","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":526,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:55.177Z] [LEG_SUBMIT] {"executionId":"exec_mlfis2m3_jkz1sp","leg":"A","venue":"polymarket","side":"yes","price":0.85,"qty":50,"clientOrderId":"polymarket_A_mlfis2m3_rjyn"}
+[2026-02-09T18:42:55.177Z] [LEG_FAIL] {"executionId":"exec_mlfis2m3_jkz1sp","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:55.727Z] [EXECUTION_START] {"executionId":"exec_mlfis30x_79bj8m","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07679999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.86},"legB":{"venue":"kalshi","side":"no","price":0.04}}
+[2026-02-09T18:42:55.727Z] [LEG_SUBMIT] {"executionId":"exec_mlfis30x_79bj8m","leg":"A","venue":"polymarket","side":"yes","price":0.86,"qty":50,"clientOrderId":"polymarket_A_mlfis30x_89t1"}
+[2026-02-09T18:42:55.727Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis30x_79bj8m","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":542,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:55.727Z] [LEG_FAIL] {"executionId":"exec_mlfis30x_79bj8m","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:56.261Z] [LEG_FAIL] {"executionId":"exec_mlfis3g6_g3onyh","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:56.261Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis3g6_g3onyh","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":527,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:56.261Z] [EXECUTION_START] {"executionId":"exec_mlfis3g6_g3onyh","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07679999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.86},"legB":{"venue":"kalshi","side":"no","price":0.04}}
+[2026-02-09T18:42:56.261Z] [LEG_SUBMIT] {"executionId":"exec_mlfis3g6_g3onyh","leg":"A","venue":"polymarket","side":"yes","price":0.86,"qty":50,"clientOrderId":"polymarket_A_mlfis3g6_kvyd"}
+[2026-02-09T18:42:56.803Z] [LEG_FAIL] {"executionId":"exec_mlfis3v9_enp2q2","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:56.803Z] [EXECUTION_START] {"executionId":"exec_mlfis3v9_enp2q2","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07679999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.86},"legB":{"venue":"kalshi","side":"no","price":0.04}}
+[2026-02-09T18:42:56.803Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis3v9_enp2q2","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":526,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:56.803Z] [LEG_SUBMIT] {"executionId":"exec_mlfis3v9_enp2q2","leg":"A","venue":"polymarket","side":"yes","price":0.86,"qty":50,"clientOrderId":"polymarket_A_mlfis3v9_qfk5"}
+[2026-02-09T18:42:57.336Z] [EXECUTION_START] {"executionId":"exec_mlfis49x_mw6hvt","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.06679999999999997,"legA":{"venue":"polymarket","side":"yes","price":0.86},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:57.336Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis49x_mw6hvt","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":531,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:57.336Z] [LEG_SUBMIT] {"executionId":"exec_mlfis49x_mw6hvt","leg":"A","venue":"polymarket","side":"yes","price":0.86,"qty":50,"clientOrderId":"polymarket_A_mlfis49x_ondg"}
+[2026-02-09T18:42:57.336Z] [LEG_FAIL] {"executionId":"exec_mlfis49x_mw6hvt","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:57.870Z] [EXECUTION_START] {"executionId":"exec_mlfis4or_0ikghr","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08619999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.84},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:57.870Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis4or_0ikghr","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":531,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:57.870Z] [LEG_SUBMIT] {"executionId":"exec_mlfis4or_0ikghr","leg":"A","venue":"polymarket","side":"yes","price":0.84,"qty":50,"clientOrderId":"polymarket_A_mlfis4or_da7c"}
+[2026-02-09T18:42:57.870Z] [LEG_FAIL] {"executionId":"exec_mlfis4or_0ikghr","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:58.398Z] [EXECUTION_START] {"executionId":"exec_mlfis53j_okkwjz","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08619999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.84},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:58.398Z] [LEG_SUBMIT] {"executionId":"exec_mlfis53j_okkwjz","leg":"A","venue":"polymarket","side":"yes","price":0.84,"qty":50,"clientOrderId":"polymarket_A_mlfis53j_2oen"}
+[2026-02-09T18:42:58.398Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis53j_okkwjz","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":527,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:58.398Z] [LEG_FAIL] {"executionId":"exec_mlfis53j_okkwjz","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:58.940Z] [EXECUTION_START] {"executionId":"exec_mlfis5ik_jrxs96","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08619999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.84},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:58.941Z] [LEG_SUBMIT] {"executionId":"exec_mlfis5ik_jrxs96","leg":"A","venue":"polymarket","side":"yes","price":0.84,"qty":50,"clientOrderId":"polymarket_A_mlfis5ik_y10z"}
+[2026-02-09T18:42:58.941Z] [LEG_FAIL] {"executionId":"exec_mlfis5ik_jrxs96","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:58.941Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis5ik_jrxs96","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":529,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:42:59.468Z] [EXECUTION_START] {"executionId":"exec_mlfis5xa_jrp17p","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08619999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.84},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:42:59.468Z] [LEG_FAIL] {"executionId":"exec_mlfis5xa_jrp17p","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:42:59.468Z] [LEG_SUBMIT] {"executionId":"exec_mlfis5xa_jrp17p","leg":"A","venue":"polymarket","side":"yes","price":0.84,"qty":50,"clientOrderId":"polymarket_A_mlfis5xa_6ev7"}
+[2026-02-09T18:42:59.468Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis5xa_jrp17p","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":526,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:00.151Z] [EXECUTION_START] {"executionId":"exec_mlfis6g1_jvz9mn","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08619999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.84},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:43:00.151Z] [LEG_FAIL] {"executionId":"exec_mlfis6g1_jvz9mn","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:00.151Z] [LEG_SUBMIT] {"executionId":"exec_mlfis6g1_jvz9mn","leg":"A","venue":"polymarket","side":"yes","price":0.84,"qty":50,"clientOrderId":"polymarket_A_mlfis6g1_zuqc"}
+[2026-02-09T18:43:00.151Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis6g1_jvz9mn","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":534,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:00.682Z] [LEG_FAIL] {"executionId":"exec_mlfis6uw_5o0jbr","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:00.682Z] [LEG_SUBMIT] {"executionId":"exec_mlfis6uw_5o0jbr","leg":"A","venue":"polymarket","side":"yes","price":0.84,"qty":50,"clientOrderId":"polymarket_A_mlfis6uw_cr1t"}
+[2026-02-09T18:43:00.682Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis6uw_5o0jbr","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":530,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:00.682Z] [EXECUTION_START] {"executionId":"exec_mlfis6uw_5o0jbr","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08619999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.84},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:43:01.211Z] [EXECUTION_START] {"executionId":"exec_mlfis79o_xz9pzk","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08619999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.84},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:43:01.211Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis79o_xz9pzk","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":527,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:01.211Z] [LEG_FAIL] {"executionId":"exec_mlfis79o_xz9pzk","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:01.211Z] [LEG_SUBMIT] {"executionId":"exec_mlfis79o_xz9pzk","leg":"A","venue":"polymarket","side":"yes","price":0.84,"qty":50,"clientOrderId":"polymarket_A_mlfis79o_x87c"}
+[2026-02-09T18:43:01.745Z] [EXECUTION_START] {"executionId":"exec_mlfis7oc_2e3h61","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08619999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.84},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:43:01.745Z] [LEG_FAIL] {"executionId":"exec_mlfis7oc_2e3h61","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:01.745Z] [LEG_SUBMIT] {"executionId":"exec_mlfis7oc_2e3h61","leg":"A","venue":"polymarket","side":"yes","price":0.84,"qty":50,"clientOrderId":"polymarket_A_mlfis7oc_ikph"}
+[2026-02-09T18:43:01.745Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis7oc_2e3h61","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":533,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:02.275Z] [LEG_SUBMIT] {"executionId":"exec_mlfis837_2gfhi3","leg":"A","venue":"polymarket","side":"yes","price":0.83,"qty":50,"clientOrderId":"polymarket_A_mlfis837_yvmi"}
+[2026-02-09T18:43:02.275Z] [EXECUTION_START] {"executionId":"exec_mlfis837_2gfhi3","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.0958,"legA":{"venue":"polymarket","side":"yes","price":0.83},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:43:02.275Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis837_2gfhi3","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":528,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:02.275Z] [LEG_FAIL] {"executionId":"exec_mlfis837_2gfhi3","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:02.805Z] [EXECUTION_START] {"executionId":"exec_mlfis8hx_np230q","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.10550000000000001,"legA":{"venue":"polymarket","side":"yes","price":0.82},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:43:02.805Z] [LEG_SUBMIT] {"executionId":"exec_mlfis8hx_np230q","leg":"A","venue":"polymarket","side":"yes","price":0.82,"qty":50,"clientOrderId":"polymarket_A_mlfis8hx_o2ds"}
+[2026-02-09T18:43:02.805Z] [LEG_FAIL] {"executionId":"exec_mlfis8hx_np230q","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:02.805Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis8hx_np230q","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":528,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:03.297Z] [BTC_PRICE] {"price":70337.9}
+[2026-02-09T18:43:03.332Z] [LEG_SUBMIT] {"executionId":"exec_mlfis8wm_a8ux8u","leg":"A","venue":"polymarket","side":"yes","price":0.82,"qty":50,"clientOrderId":"polymarket_A_mlfis8wm_xm8q"}
+[2026-02-09T18:43:03.332Z] [EXECUTION_START] {"executionId":"exec_mlfis8wm_a8ux8u","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.10550000000000001,"legA":{"venue":"polymarket","side":"yes","price":0.82},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:43:03.332Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis8wm_a8ux8u","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":526,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:03.332Z] [LEG_FAIL] {"executionId":"exec_mlfis8wm_a8ux8u","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:03.867Z] [LEG_FAIL] {"executionId":"exec_mlfis9ba_sdcyrl","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:03.867Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis9ba_sdcyrl","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":533,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:03.866Z] [LEG_SUBMIT] {"executionId":"exec_mlfis9ba_sdcyrl","leg":"A","venue":"polymarket","side":"yes","price":0.84,"qty":50,"clientOrderId":"polymarket_A_mlfis9ba_8aoe"}
+[2026-02-09T18:43:03.866Z] [EXECUTION_START] {"executionId":"exec_mlfis9ba_sdcyrl","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08619999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.84},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:43:04.410Z] [EXECUTION_START] {"executionId":"exec_mlfis9q7_33ryc6","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.07649999999999998,"legA":{"venue":"polymarket","side":"yes","price":0.85},"legB":{"venue":"kalshi","side":"no","price":0.05}}
+[2026-02-09T18:43:04.410Z] [LEG_FAIL] {"executionId":"exec_mlfis9q7_33ryc6","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:04.410Z] [LEG_SUBMIT] {"executionId":"exec_mlfis9q7_33ryc6","leg":"A","venue":"polymarket","side":"yes","price":0.85,"qty":50,"clientOrderId":"polymarket_A_mlfis9q6_xn7u"}
+[2026-02-09T18:43:04.410Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfis9q7_33ryc6","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":539,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:07.485Z] [EXECUTION_START] {"executionId":"exec_mlfisc3p_lswwiw","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.0865,"legA":{"venue":"polymarket","side":"yes","price":0.85},"legB":{"venue":"kalshi","side":"no","price":0.04}}
+[2026-02-09T18:43:07.486Z] [LEG_FAIL] {"executionId":"exec_mlfisc3p_lswwiw","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:07.486Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfisc3p_lswwiw","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":536,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:07.485Z] [LEG_SUBMIT] {"executionId":"exec_mlfisc3p_lswwiw","leg":"A","venue":"polymarket","side":"yes","price":0.85,"qty":50,"clientOrderId":"polymarket_A_mlfisc3p_399x"}
+[2026-02-09T18:43:08.015Z] [EXECUTION_START] {"executionId":"exec_mlfiscin_vankz4","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.0865,"legA":{"venue":"polymarket","side":"yes","price":0.85},"legB":{"venue":"kalshi","side":"no","price":0.04}}
+[2026-02-09T18:43:08.015Z] [LEG_FAIL] {"executionId":"exec_mlfiscin_vankz4","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:08.015Z] [LEG_SUBMIT] {"executionId":"exec_mlfiscin_vankz4","leg":"A","venue":"polymarket","side":"yes","price":0.85,"qty":50,"clientOrderId":"polymarket_A_mlfiscin_j3kf"}
+[2026-02-09T18:43:08.015Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfiscin_vankz4","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":528,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:08.543Z] [EXECUTION_START] {"executionId":"exec_mlfiscxc_w4ss4q","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08679999999999999,"legA":{"venue":"polymarket","side":"yes","price":0.86},"legB":{"venue":"kalshi","side":"no","price":0.03}}
+[2026-02-09T18:43:08.544Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfiscxc_w4ss4q","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":527,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:08.543Z] [LEG_SUBMIT] {"executionId":"exec_mlfiscxc_w4ss4q","leg":"A","venue":"polymarket","side":"yes","price":0.86,"qty":50,"clientOrderId":"polymarket_A_mlfiscxc_dhii"}
+[2026-02-09T18:43:08.543Z] [LEG_FAIL] {"executionId":"exec_mlfiscxc_w4ss4q","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:09.133Z] [EXECUTION_START] {"executionId":"exec_mlfisddo_lk0ozt","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.08679999999999999,"legA":{"venue":"polymarket","side":"yes","price":0.86},"legB":{"venue":"kalshi","side":"no","price":0.03}}
+[2026-02-09T18:43:09.133Z] [LEG_FAIL] {"executionId":"exec_mlfisddo_lk0ozt","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:09.133Z] [LEG_SUBMIT] {"executionId":"exec_mlfisddo_lk0ozt","leg":"A","venue":"polymarket","side":"yes","price":0.86,"qty":50,"clientOrderId":"polymarket_A_mlfisddo_uc2d"}
+[2026-02-09T18:43:09.133Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfisddo_lk0ozt","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":529,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:09.681Z] [EXECUTION_START] {"executionId":"exec_mlfisdse_oidn1e","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.057799999999999956,"legA":{"venue":"polymarket","side":"yes","price":0.89},"legB":{"venue":"kalshi","side":"no","price":0.03}}
+[2026-02-09T18:43:09.681Z] [LEG_SUBMIT] {"executionId":"exec_mlfisdse_oidn1e","leg":"A","venue":"polymarket","side":"yes","price":0.89,"qty":22,"clientOrderId":"polymarket_A_mlfisdse_gn7i"}
+[2026-02-09T18:43:09.681Z] [LEG_FAIL] {"executionId":"exec_mlfisdse_oidn1e","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:09.681Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfisdse_oidn1e","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":547,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:10.241Z] [EXECUTION_START] {"executionId":"exec_mlfise8f_r3ktip","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.04809999999999995,"legA":{"venue":"polymarket","side":"yes","price":0.9},"legB":{"venue":"kalshi","side":"no","price":0.03}}
+[2026-02-09T18:43:10.241Z] [LEG_SUBMIT] {"executionId":"exec_mlfise8f_r3ktip","leg":"A","venue":"polymarket","side":"yes","price":0.9,"qty":50,"clientOrderId":"polymarket_A_mlfise8f_29ab"}
+[2026-02-09T18:43:10.241Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfise8f_r3ktip","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":530,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:10.241Z] [LEG_FAIL] {"executionId":"exec_mlfise8f_r3ktip","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:11.879Z] [EXECUTION_START] {"executionId":"exec_mlfisfgu_1t409y","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.04809999999999995,"legA":{"venue":"polymarket","side":"yes","price":0.9},"legB":{"venue":"kalshi","side":"no","price":0.03}}
+[2026-02-09T18:43:11.879Z] [LEG_SUBMIT] {"executionId":"exec_mlfisfgu_1t409y","leg":"A","venue":"polymarket","side":"yes","price":0.9,"qty":50,"clientOrderId":"polymarket_A_mlfisfgu_1aok"}
+[2026-02-09T18:43:11.879Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfisfgu_1t409y","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":569,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:11.879Z] [LEG_FAIL] {"executionId":"exec_mlfisfgu_1t409y","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:13.079Z] [EXECUTION_START] {"executionId":"exec_mlfisgfb_y0a3py","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.04809999999999995,"legA":{"venue":"polymarket","side":"yes","price":0.9},"legB":{"venue":"kalshi","side":"no","price":0.03}}
+[2026-02-09T18:43:13.079Z] [LEG_SUBMIT] {"executionId":"exec_mlfisgfb_y0a3py","leg":"A","venue":"polymarket","side":"yes","price":0.9,"qty":50,"clientOrderId":"polymarket_A_mlfisgfb_v076"}
+[2026-02-09T18:43:13.079Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfisgfb_y0a3py","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":528,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:13.079Z] [LEG_FAIL] {"executionId":"exec_mlfisgfb_y0a3py","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:13.607Z] [EXECUTION_START] {"executionId":"exec_mlfisgu1_pdth53","intervalKey":"18:30-18:45 UTC","expectedEdgeNet":0.04809999999999995,"legA":{"venue":"polymarket","side":"yes","price":0.9},"legB":{"venue":"kalshi","side":"no","price":0.03}}
+[2026-02-09T18:43:13.607Z] [LEG_SUBMIT] {"executionId":"exec_mlfisgu1_pdth53","leg":"A","venue":"polymarket","side":"yes","price":0.9,"qty":50,"clientOrderId":"polymarket_A_mlfisgu1_yti4"}
+[2026-02-09T18:43:13.607Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfisgu1_pdth53","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":526,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:43:13.607Z] [LEG_FAIL] {"executionId":"exec_mlfisgu1_pdth53","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:43:18.297Z] [BTC_PRICE] {"price":70418.1}
+[2026-02-09T18:43:33.297Z] [BTC_PRICE] {"price":70398.3}
+[2026-02-09T18:43:48.297Z] [BTC_PRICE] {"price":70418}
+[2026-02-09T18:44:03.297Z] [BTC_PRICE] {"price":70409.9}
+[2026-02-09T18:44:18.297Z] [BTC_PRICE] {"price":70400.1}
+[2026-02-09T18:44:33.298Z] [BTC_PRICE] {"price":70408.6}
+[2026-02-09T18:44:48.298Z] [BTC_PRICE] {"price":70396.4}
+[2026-02-09T18:45:03.298Z] [BTC_PRICE] {"price":70375.8}
+[2026-02-09T18:45:18.298Z] [BTC_PRICE] {"price":70472.4}
+[2026-02-09T18:45:33.298Z] [BTC_PRICE] {"price":70450.6}
+[2026-02-09T18:45:48.298Z] [BTC_PRICE] {"price":70336.5}
+[2026-02-09T18:46:03.299Z] [BTC_PRICE] {"price":70316.9}
+[2026-02-09T18:46:18.300Z] [BTC_PRICE] {"price":70301.7}
+[2026-02-09T18:46:33.300Z] [BTC_PRICE] {"price":70331.6}
+[2026-02-09T18:46:48.300Z] [BTC_PRICE] {"price":70358}
+[2026-02-09T18:47:03.300Z] [BTC_PRICE] {"price":70352.5}
+[2026-02-09T18:47:18.301Z] [BTC_PRICE] {"price":70327.8}
+[2026-02-09T18:47:33.301Z] [BTC_PRICE] {"price":70302.9}
+[2026-02-09T18:47:48.302Z] [BTC_PRICE] {"price":70394.2}
+[2026-02-09T18:48:03.303Z] [BTC_PRICE] {"price":70444.1}
+[2026-02-09T18:48:18.303Z] [BTC_PRICE] {"price":70480}
+[2026-02-09T18:48:33.303Z] [BTC_PRICE] {"price":70482.8}
+[2026-02-09T18:48:48.303Z] [BTC_PRICE] {"price":70455.7}
+[2026-02-09T18:49:03.303Z] [BTC_PRICE] {"price":70466.2}
+[2026-02-09T18:49:18.303Z] [BTC_PRICE] {"price":70444.8}
+[2026-02-09T18:49:33.303Z] [BTC_PRICE] {"price":70407.4}
+[2026-02-09T18:49:48.303Z] [BTC_PRICE] {"price":70354.8}
+[2026-02-09T18:50:03.303Z] [BTC_PRICE] {"price":70341.6}
+[2026-02-09T18:50:18.303Z] [BTC_PRICE] {"price":70366.4}
+[2026-02-09T18:50:33.304Z] [BTC_PRICE] {"price":70390.7}
+[2026-02-09T18:50:48.304Z] [BTC_PRICE] {"price":70382.6}
+[2026-02-09T18:51:03.304Z] [BTC_PRICE] {"price":70364}
+[2026-02-09T18:51:18.304Z] [BTC_PRICE] {"price":70359.4}
+[2026-02-09T18:51:33.304Z] [BTC_PRICE] {"price":70340.8}
+[2026-02-09T18:51:48.304Z] [BTC_PRICE] {"price":70338.4}
+[2026-02-09T18:52:03.304Z] [BTC_PRICE] {"price":70346.4}
+[2026-02-09T18:52:18.304Z] [BTC_PRICE] {"price":70414.4}
+[2026-02-09T18:52:20.358Z] [LEG_FAIL] {"executionId":"exec_mlfj45y4_0v11l3","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:52:20.358Z] [LEG_SUBMIT] {"executionId":"exec_mlfj45y4_0v11l3","leg":"A","venue":"polymarket","side":"no","price":0.46,"qty":32,"clientOrderId":"polymarket_A_mlfj45y4_bihc"}
+[2026-02-09T18:52:20.358Z] [EXECUTION_START] {"executionId":"exec_mlfj45y4_0v11l3","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04289999999999996,"legA":{"venue":"polymarket","side":"no","price":0.46},"legB":{"venue":"kalshi","side":"yes","price":0.46}}
+[2026-02-09T18:52:20.358Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfj45y4_0v11l3","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":1514,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:52:33.304Z] [BTC_PRICE] {"price":70324.7}
+[2026-02-09T18:52:48.304Z] [BTC_PRICE] {"price":70316}
+[2026-02-09T18:53:03.305Z] [BTC_PRICE] {"price":70319.8}
+[2026-02-09T18:53:18.305Z] [BTC_PRICE] {"price":70313.7}
+[2026-02-09T18:53:33.305Z] [BTC_PRICE] {"price":70319}
+[2026-02-09T18:53:48.305Z] [BTC_PRICE] {"price":70322.6}
+[2026-02-09T18:54:03.305Z] [BTC_PRICE] {"price":70333.3}
+[2026-02-09T18:54:18.305Z] [BTC_PRICE] {"price":70332.1}
+[2026-02-09T18:54:33.305Z] [BTC_PRICE] {"price":70265.5}
+[2026-02-09T18:54:48.305Z] [BTC_PRICE] {"price":70243.1}
+[2026-02-09T18:55:03.305Z] [BTC_PRICE] {"price":70254.2}
+[2026-02-09T18:55:18.305Z] [BTC_PRICE] {"price":70241.6}
+[2026-02-09T18:55:33.305Z] [BTC_PRICE] {"price":70213.5}
+[2026-02-09T18:55:48.305Z] [BTC_PRICE] {"price":70242.1}
+[2026-02-09T18:56:03.305Z] [BTC_PRICE] {"price":70267.4}
+[2026-02-09T18:56:16.440Z] [EXECUTION_START] {"executionId":"exec_mlfj98sl_sp29mt","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04419999999999995,"legA":{"venue":"polymarket","side":"no","price":0.78},"legB":{"venue":"kalshi","side":"yes","price":0.15}}
+[2026-02-09T18:56:16.440Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfj98sl_sp29mt","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":627,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:56:16.440Z] [LEG_SUBMIT] {"executionId":"exec_mlfj98sl_sp29mt","leg":"A","venue":"polymarket","side":"no","price":0.78,"qty":50,"clientOrderId":"polymarket_A_mlfj98sl_grrq"}
+[2026-02-09T18:56:16.440Z] [LEG_FAIL] {"executionId":"exec_mlfj98sl_sp29mt","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:56:18.305Z] [BTC_PRICE] {"price":70281.8}
+[2026-02-09T18:56:29.246Z] [EXECUTION_START] {"executionId":"exec_mlfj9inn_tf2xwo","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04519999999999995,"legA":{"venue":"polymarket","side":"no","price":0.81},"legB":{"venue":"kalshi","side":"yes","price":0.12}}
+[2026-02-09T18:56:29.246Z] [LEG_FAIL] {"executionId":"exec_mlfj9inn_tf2xwo","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:56:29.246Z] [LEG_SUBMIT] {"executionId":"exec_mlfj9inn_tf2xwo","leg":"A","venue":"polymarket","side":"no","price":0.81,"qty":50,"clientOrderId":"polymarket_A_mlfj9inn_fvfz"}
+[2026-02-09T18:56:29.246Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfj9inn_tf2xwo","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":651,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:56:33.305Z] [BTC_PRICE] {"price":70271.6}
+[2026-02-09T18:56:46.611Z] [EXECUTION_START] {"executionId":"exec_mlfj9w1z_6z414g","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.045800000000000056,"legA":{"venue":"polymarket","side":"no","price":0.83},"legB":{"venue":"kalshi","side":"yes","price":0.1}}
+[2026-02-09T18:56:46.611Z] [LEG_SUBMIT] {"executionId":"exec_mlfj9w1z_6z414g","leg":"A","venue":"polymarket","side":"no","price":0.83,"qty":50,"clientOrderId":"polymarket_A_mlfj9w1z_o5xa"}
+[2026-02-09T18:56:46.612Z] [LEG_FAIL] {"executionId":"exec_mlfj9w1z_6z414g","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:56:46.612Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfj9w1z_6z414g","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":653,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:56:48.305Z] [BTC_PRICE] {"price":70274.6}
+[2026-02-09T18:57:03.305Z] [BTC_PRICE] {"price":70228.2}
+[2026-02-09T18:57:18.305Z] [BTC_PRICE] {"price":70253.6}
+[2026-02-09T18:57:33.305Z] [BTC_PRICE] {"price":70260.8}
+[2026-02-09T18:57:37.393Z] [LEG_FILL] {"executionId":"exec_mlfjazap_2ngs7d","leg":"A","venue":"polymarket","orderId":"0xf9b782b888eb2366dafb6c66e490704f7782deec7446b7594a05e0cf5cdb339a","fillQty":50.588233,"fillPrice":0.8499999990116278,"latencyMs":576}
+[2026-02-09T18:57:37.393Z] [EXECUTION_START] {"executionId":"exec_mlfjazap_2ngs7d","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04680000000000006,"legA":{"venue":"polymarket","side":"no","price":0.86},"legB":{"venue":"kalshi","side":"yes","price":0.07}}
+[2026-02-09T18:57:37.393Z] [LEG_SUBMIT] {"executionId":"exec_mlfjazap_2ngs7d","leg":"A","venue":"polymarket","side":"no","price":0.86,"qty":50,"clientOrderId":"polymarket_A_mlfjazap_kz4t"}
+[2026-02-09T18:57:37.493Z] [LEG_SUBMIT] {"executionId":"exec_mlfjazap_2ngs7d","leg":"B","venue":"kalshi","side":"yes","price":0.07,"qty":50,"clientOrderId":"kalshi_B_mlfjazap_uhn6"}
+[2026-02-09T18:57:37.493Z] [UNWIND_START] {"executionId":"exec_mlfjazap_2ngs7d","reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","legToUnwind":{"venue":"polymarket","side":"no","fillPrice":0.8499999990116278}}
+[2026-02-09T18:57:37.493Z] [LEG_FAIL] {"executionId":"exec_mlfjazap_2ngs7d","leg":"B","venue":"kalshi","reason":"rejected","error":"fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)"}
+[2026-02-09T18:57:44.664Z] [UNWIND_RESULT] {"executionId":"exec_mlfjazap_2ngs7d","success":true,"unwindPrice":0.84,"realizedLoss":0.5038272802031097}
+[2026-02-09T18:57:44.664Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfjazap_2ngs7d","status":"unwound","success":false,"realizedPnl":-0.5038272802031097,"latencyMs":7847,"legALatencyMs":575,"legBLatencyMs":null}
+[2026-02-09T18:57:44.665Z] [COOLDOWN] {"reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","durationMs":3000}
+[2026-02-09T18:57:48.208Z] [EXECUTION_START] {"executionId":"exec_mlfjb7oe_d0mm67","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04650000000000006,"legA":{"venue":"polymarket","side":"no","price":0.85},"legB":{"venue":"kalshi","side":"yes","price":0.08}}
+[2026-02-09T18:57:48.208Z] [LEG_SUBMIT] {"executionId":"exec_mlfjb7oe_d0mm67","leg":"A","venue":"polymarket","side":"no","price":0.85,"qty":50,"clientOrderId":"polymarket_A_mlfjb7oe_pt96"}
+[2026-02-09T18:57:48.208Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfjb7oe_d0mm67","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":530,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:57:48.208Z] [LEG_FAIL] {"executionId":"exec_mlfjb7oe_d0mm67","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:57:48.306Z] [BTC_PRICE] {"price":70304.7}
+[2026-02-09T18:57:49.014Z] [EXECUTION_START] {"executionId":"exec_mlfjb8a1_ela908","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04680000000000006,"legA":{"venue":"polymarket","side":"no","price":0.86},"legB":{"venue":"kalshi","side":"yes","price":0.07}}
+[2026-02-09T18:57:49.014Z] [LEG_SUBMIT] {"executionId":"exec_mlfjb8a1_ela908","leg":"A","venue":"polymarket","side":"no","price":0.86,"qty":13,"clientOrderId":"polymarket_A_mlfjb8a1_xuzu"}
+[2026-02-09T18:57:49.014Z] [LEG_FILL] {"executionId":"exec_mlfjb8a1_ela908","leg":"A","venue":"polymarket","orderId":"0x9770c93baaef0e2101f4b252bb76b42d4d399a8d7df993384ab0e24b744c7109","fillQty":13,"fillPrice":0.86,"latencyMs":557}
+[2026-02-09T18:57:49.108Z] [LEG_SUBMIT] {"executionId":"exec_mlfjb8a1_ela908","leg":"B","venue":"kalshi","side":"yes","price":0.07,"qty":13,"clientOrderId":"kalshi_B_mlfjb8a1_fyem"}
+[2026-02-09T18:57:49.108Z] [LEG_FAIL] {"executionId":"exec_mlfjb8a1_ela908","leg":"B","venue":"kalshi","reason":"rejected","error":"fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)"}
+[2026-02-09T18:57:49.108Z] [UNWIND_START] {"executionId":"exec_mlfjb8a1_ela908","reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","legToUnwind":{"venue":"polymarket","side":"no","fillPrice":0.86}}
+[2026-02-09T18:57:55.232Z] [UNWIND_RESULT] {"executionId":"exec_mlfjb8a1_ela908","success":true,"unwindPrice":0.8700000000000001,"realizedLoss":0}
+[2026-02-09T18:57:55.232Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfjb8a1_ela908","status":"unwound","success":false,"realizedPnl":0,"latencyMs":6775,"legALatencyMs":557,"legBLatencyMs":null}
+[2026-02-09T18:57:55.233Z] [COOLDOWN] {"reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","durationMs":3000}
+[2026-02-09T18:57:59.552Z] [EXECUTION_START] {"executionId":"exec_mlfjbgej_hq4h5u","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04749999999999995,"legA":{"venue":"polymarket","side":"no","price":0.88},"legB":{"venue":"kalshi","side":"yes","price":0.05}}
+[2026-02-09T18:57:59.552Z] [LEG_FILL] {"executionId":"exec_mlfjbgej_hq4h5u","leg":"A","venue":"polymarket","orderId":"0x0e53f1e38c352433965160e5ce1f810aadfa32b06dc13f99f0aacd608c8535d6","fillQty":50,"fillPrice":0.88,"latencyMs":565}
+[2026-02-09T18:57:59.552Z] [LEG_SUBMIT] {"executionId":"exec_mlfjbgej_hq4h5u","leg":"A","venue":"polymarket","side":"no","price":0.88,"qty":50,"clientOrderId":"polymarket_A_mlfjbgej_tsbv"}
+[2026-02-09T18:57:59.646Z] [LEG_SUBMIT] {"executionId":"exec_mlfjbgej_hq4h5u","leg":"B","venue":"kalshi","side":"yes","price":0.05,"qty":50,"clientOrderId":"kalshi_B_mlfjbgej_lce4"}
+[2026-02-09T18:57:59.647Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfjbgej_hq4h5u","status":"success","success":true,"realizedPnl":3.5,"latencyMs":660,"legALatencyMs":565,"legBLatencyMs":94}
+[2026-02-09T18:57:59.647Z] [LEG_FILL] {"executionId":"exec_mlfjbgej_hq4h5u","leg":"B","venue":"kalshi","orderId":"3abe0a00-4899-4789-a72b-be70760fac9f","fillQty":50,"fillPrice":0.05,"latencyMs":95}
+[2026-02-09T18:58:00.236Z] [EXECUTION_START] {"executionId":"exec_mlfjbgxe_11rmhg","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04749999999999995,"legA":{"venue":"polymarket","side":"no","price":0.88},"legB":{"venue":"kalshi","side":"yes","price":0.05}}
+[2026-02-09T18:58:00.236Z] [LEG_FILL] {"executionId":"exec_mlfjbgxe_11rmhg","leg":"A","venue":"polymarket","orderId":"0x632755d53f7d5e08ff85e593e3620e14b812b6eacd743d2c9f49058ad86fd499","fillQty":50,"fillPrice":0.88,"latencyMs":570}
+[2026-02-09T18:58:00.236Z] [LEG_SUBMIT] {"executionId":"exec_mlfjbgxe_11rmhg","leg":"A","venue":"polymarket","side":"no","price":0.88,"qty":50,"clientOrderId":"polymarket_A_mlfjbgxe_u63j"}
+[2026-02-09T18:58:00.475Z] [LEG_SUBMIT] {"executionId":"exec_mlfjbgxe_11rmhg","leg":"B","venue":"kalshi","side":"yes","price":0.05,"qty":50,"clientOrderId":"kalshi_B_mlfjbgxe_3s2n"}
+[2026-02-09T18:58:00.476Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfjbgxe_11rmhg","status":"success","success":true,"realizedPnl":3.5,"latencyMs":810,"legALatencyMs":570,"legBLatencyMs":239}
+[2026-02-09T18:58:00.476Z] [LEG_FILL] {"executionId":"exec_mlfjbgxe_11rmhg","leg":"B","venue":"kalshi","orderId":"570efcf9-8eea-4ff6-9190-c8a302b87aec","fillQty":50,"fillPrice":0.05,"latencyMs":240}
+[2026-02-09T18:58:01.051Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfjbhkl_wvgs7k","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":550,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:58:01.051Z] [EXECUTION_START] {"executionId":"exec_mlfjbhkl_wvgs7k","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04749999999999995,"legA":{"venue":"polymarket","side":"no","price":0.88},"legB":{"venue":"kalshi","side":"yes","price":0.05}}
+[2026-02-09T18:58:01.051Z] [LEG_FAIL] {"executionId":"exec_mlfjbhkl_wvgs7k","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:58:01.051Z] [LEG_SUBMIT] {"executionId":"exec_mlfjbhkl_wvgs7k","leg":"A","venue":"polymarket","side":"no","price":0.88,"qty":50,"clientOrderId":"polymarket_A_mlfjbhkl_zvmm"}
+[2026-02-09T18:58:02.075Z] [EXECUTION_START] {"executionId":"exec_mlfjbia2_lvnw17","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04749999999999995,"legA":{"venue":"polymarket","side":"no","price":0.88},"legB":{"venue":"kalshi","side":"yes","price":0.05}}
+[2026-02-09T18:58:02.075Z] [LEG_SUBMIT] {"executionId":"exec_mlfjbia2_lvnw17","leg":"A","venue":"polymarket","side":"no","price":0.88,"qty":50,"clientOrderId":"polymarket_A_mlfjbia2_sc4l"}
+[2026-02-09T18:58:02.075Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfjbia2_lvnw17","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":657,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:58:02.075Z] [LEG_FAIL] {"executionId":"exec_mlfjbia2_lvnw17","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:58:03.306Z] [BTC_PRICE] {"price":70282.2}
+[2026-02-09T18:58:08.232Z] [EXECUTION_START] {"executionId":"exec_mlfjbn3s_eo2mvz","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04779999999999995,"legA":{"venue":"polymarket","side":"no","price":0.89},"legB":{"venue":"kalshi","side":"yes","price":0.04}}
+[2026-02-09T18:58:08.232Z] [LEG_FILL] {"executionId":"exec_mlfjbn3s_eo2mvz","leg":"A","venue":"polymarket","orderId":"0xb22490e7a38771b90654cbc3e78dfcb6b4690d5b6b3af569c571601df71b0e03","fillQty":25,"fillPrice":0.89,"latencyMs":560}
+[2026-02-09T18:58:08.232Z] [LEG_SUBMIT] {"executionId":"exec_mlfjbn3s_eo2mvz","leg":"A","venue":"polymarket","side":"no","price":0.89,"qty":50,"clientOrderId":"polymarket_A_mlfjbn3s_92xz"}
+[2026-02-09T18:58:08.476Z] [LEG_SUBMIT] {"executionId":"exec_mlfjbn3s_eo2mvz","leg":"B","venue":"kalshi","side":"yes","price":0.04,"qty":25,"clientOrderId":"kalshi_B_mlfjbn3s_uiim"}
+[2026-02-09T18:58:08.476Z] [LEG_FILL] {"executionId":"exec_mlfjbn3s_eo2mvz","leg":"B","venue":"kalshi","orderId":"2d49c074-d280-4c91-aa28-bf337cf83341","fillQty":25,"fillPrice":0.04,"latencyMs":244}
+[2026-02-09T18:58:08.476Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfjbn3s_eo2mvz","status":"success","success":true,"realizedPnl":1.75,"latencyMs":804,"legALatencyMs":560,"legBLatencyMs":243}
+[2026-02-09T18:58:11.516Z] [EXECUTION_START] {"executionId":"exec_mlfjbpm4_8k8xyf","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04809999999999995,"legA":{"venue":"polymarket","side":"no","price":0.9},"legB":{"venue":"kalshi","side":"yes","price":0.03}}
+[2026-02-09T18:58:11.516Z] [LEG_FAIL] {"executionId":"exec_mlfjbpm4_8k8xyf","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-09T18:58:11.516Z] [LEG_SUBMIT] {"executionId":"exec_mlfjbpm4_8k8xyf","leg":"A","venue":"polymarket","side":"no","price":0.9,"qty":50,"clientOrderId":"polymarket_A_mlfjbpm4_np15"}
+[2026-02-09T18:58:11.516Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfjbpm4_8k8xyf","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":592,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-09T18:58:18.306Z] [BTC_PRICE] {"price":70281.9}
+[2026-02-09T18:58:33.306Z] [BTC_PRICE] {"price":70286.4}
+[2026-02-09T18:58:36.688Z] [LEG_SUBMIT] {"executionId":"exec_mlfjc91z_41w8ww","leg":"A","venue":"polymarket","side":"no","price":0.9,"qty":50,"clientOrderId":"polymarket_A_mlfjc91z_23g8"}
+[2026-02-09T18:58:36.688Z] [EXECUTION_START] {"executionId":"exec_mlfjc91z_41w8ww","intervalKey":"18:45-19:00 UTC","expectedEdgeNet":0.04809999999999995,"legA":{"venue":"polymarket","side":"no","price":0.9},"legB":{"venue":"kalshi","side":"yes","price":0.03}}
+[2026-02-09T18:58:36.688Z] [LEG_FILL] {"executionId":"exec_mlfjc91z_41w8ww","leg":"A","venue":"polymarket","orderId":"0xd59143a6b42f6cdb6509da8e494b6f71672046a4b7134782362405fce3e45231","fillQty":50,"fillPrice":0.9,"latencyMs":569}
+[2026-02-09T18:58:36.939Z] [LEG_FILL] {"executionId":"exec_mlfjc91z_41w8ww","leg":"B","venue":"kalshi","orderId":"af05da23-d5f4-4e7d-9d43-9ed76ce10c09","fillQty":50,"fillPrice":0.03,"latencyMs":251}
+[2026-02-09T18:58:36.940Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfjc91z_41w8ww","status":"success","success":true,"realizedPnl":3.5,"latencyMs":820,"legALatencyMs":569,"legBLatencyMs":251}
+[2026-02-09T18:58:36.939Z] [LEG_SUBMIT] {"executionId":"exec_mlfjc91z_41w8ww","leg":"B","venue":"kalshi","side":"yes","price":0.03,"qty":50,"clientOrderId":"kalshi_B_mlfjc91z_dsyg"}
+[2026-02-09T18:58:48.306Z] [BTC_PRICE] {"price":70323}
+[2026-02-09T18:59:03.306Z] [BTC_PRICE] {"price":70322.2}
+[2026-02-09T18:59:18.307Z] [BTC_PRICE] {"price":70333.8}
+[2026-02-09T18:59:33.307Z] [BTC_PRICE] {"price":70330.1}
+[2026-02-09T18:59:48.307Z] [BTC_PRICE] {"price":70369.1}
+[2026-02-09T19:00:03.308Z] [BTC_PRICE] {"price":70358.5}
+[2026-02-09T19:00:18.308Z] [BTC_PRICE] {"price":70346.7}
+[2026-02-09T19:00:33.308Z] [BTC_PRICE] {"price":70365.4}
+[2026-02-09T19:00:48.308Z] [BTC_PRICE] {"price":70350.4}
+[2026-02-09T19:01:03.308Z] [BTC_PRICE] {"price":70333.7}
+[2026-02-09T19:01:18.308Z] [BTC_PRICE] {"price":70286.6}
+[2026-02-09T19:01:33.308Z] [BTC_PRICE] {"price":70270.9}
+[2026-02-09T19:01:48.308Z] [BTC_PRICE] {"price":70231}
+[2026-02-09T19:02:03.309Z] [BTC_PRICE] {"price":70240.7}
+[2026-02-09T19:02:18.309Z] [BTC_PRICE] {"price":70299.3}
+[2026-02-09T19:02:33.309Z] [BTC_PRICE] {"price":70342.6}
+[2026-02-09T19:02:48.309Z] [BTC_PRICE] {"price":70313.4}
+[2026-02-09T19:03:03.310Z] [BTC_PRICE] {"price":70307.4}
+[2026-02-09T19:03:18.310Z] [BTC_PRICE] {"price":70303.3}
+[2026-02-09T19:03:33.310Z] [BTC_PRICE] {"price":70386.9}
+[2026-02-09T19:03:48.310Z] [BTC_PRICE] {"price":70480.9}
+[2026-02-09T19:04:03.310Z] [BTC_PRICE] {"price":70444.2}
+[2026-02-09T19:04:18.310Z] [BTC_PRICE] {"price":70402.7}
+[2026-02-09T19:04:33.311Z] [BTC_PRICE] {"price":70333.4}
+[2026-02-09T19:04:48.311Z] [BTC_PRICE] {"price":70351.7}
+[2026-02-09T19:05:03.311Z] [BTC_PRICE] {"price":70405.9}
+[2026-02-09T19:05:18.311Z] [BTC_PRICE] {"price":70392.7}
+[2026-02-09T19:05:33.311Z] [BTC_PRICE] {"price":70426.5}
+[2026-02-09T19:05:48.311Z] [BTC_PRICE] {"price":70374.3}
+[2026-02-09T19:06:03.311Z] [BTC_PRICE] {"price":70375.4}
