@@ -9,8 +9,7 @@
 import { join } from "path";
 import { appendFile, mkdir } from "node:fs/promises";
 import type { SettlementOutcome } from "../data/settlementTracker";
-import type { IntervalMapping } from "../markets/mappingStore";
-import { getAnalytics } from "../data/btcPriceStore";
+import type { IntervalCloseSnapshot } from "../data/settlementTracker";
 
 const CSV_DIR = join(process.cwd(), "logs_v2");
 const CSV_PATH = join(CSV_DIR, "settlements.csv");
@@ -66,15 +65,18 @@ function v(val: unknown): string {
 
 /**
  * Log a settlement outcome to CSV. Fire-and-forget.
+ *
+ * Analytics (crossingCount, rangeUsd, distFromRefUsd) come from the
+ * pre-captured snapshot, NOT from live btcPriceStore state.
  */
 export function logSettlement(
   outcome: SettlementOutcome,
-  mapping: IntervalMapping | null,
+  snapshot: IntervalCloseSnapshot,
 ): void {
   try {
     if (!headerWritten) {
       // Lazy init if not already initialized
-      initSettlementLogger().then(() => logSettlement(outcome, mapping));
+      initSettlementLogger().then(() => logSettlement(outcome, snapshot));
       return;
     }
 
@@ -87,18 +89,6 @@ export function logSettlement(
     const twapSpotDiv = outcome.btcTwap60sAtClose != null && outcome.btcSpotAtClose != null
       ? Math.abs(outcome.btcTwap60sAtClose - outcome.btcSpotAtClose)
       : null;
-
-    // Use the average ref price for distance calculation
-    const avgRef = kalshiRef != null && polyRef != null
-      ? (kalshiRef + polyRef) / 2
-      : kalshiRef ?? polyRef;
-    const distFromRef = outcome.btcSpotAtClose != null && avgRef != null
-      ? Math.abs(outcome.btcSpotAtClose - avgRef)
-      : null;
-
-    // Get BTC price analytics (crossing count, range) - may be stale after reset
-    // These are best-effort; the btcPriceStore may already be reset for the new interval
-    const analytics = getAnalytics();
 
     const values: string[] = [
       v(outcome.intervalKey.startTs),
@@ -113,9 +103,9 @@ export function logSettlement(
       v(outcome.polyResolution),
       outcome.oraclesAgree ? "1" : "0",
       outcome.deadZoneHit ? "1" : "0",
-      v(analytics.crossingCount),
-      v(analytics.rangeUsd),
-      v(distFromRef),
+      v(snapshot.crossingCount),
+      v(snapshot.rangeUsd),
+      v(snapshot.distFromRefUsd),
       v(outcome.checkedAt),
     ];
 
