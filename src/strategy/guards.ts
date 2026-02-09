@@ -7,7 +7,7 @@
 
 import type { GuardResult, GuardContext, Venue } from "./types";
 import type { PositionSnapshot } from "../state/positionTracker";
-import { PRICE_BOUNDS } from "../config/riskParams";
+import { PRICE_BOUNDS, RISK_PARAMS } from "../config/riskParams";
 
 /**
  * Check if a price is valid for a venue.
@@ -164,11 +164,33 @@ export function checkPositionBalance(positions: PositionSnapshot): GuardResult {
 }
 
 /**
+ * Check if we're too close to rollover for new positions.
+ */
+export function checkTimeToRollover(
+  msUntilRollover: number,
+  cutoffMs: number
+): GuardResult {
+  if (msUntilRollover > cutoffMs) {
+    return { pass: true };
+  }
+  return {
+    pass: false,
+    reason: `Too close to rollover: ${(msUntilRollover / 1000).toFixed(0)}s remaining (cutoff=${(cutoffMs / 1000).toFixed(0)}s)`,
+  };
+}
+
+/**
  * Run all guard checks.
  *
  * Returns the first failing guard result, or { pass: true } if all pass.
  */
 export function runAllGuards(context: GuardContext): GuardResult {
+  // Check time to rollover first (unconditional hard cutoff)
+  if (context.msUntilRollover !== undefined) {
+    const timeResult = checkTimeToRollover(context.msUntilRollover, RISK_PARAMS.noNewPositionsCutoffMs);
+    if (!timeResult.pass) return timeResult;
+  }
+
   // Check daily loss first (kill switch takes priority)
   const dailyLossResult = checkDailyLoss(context.dailyLoss, context.maxDailyLoss);
   if (!dailyLossResult.pass) return dailyLossResult;

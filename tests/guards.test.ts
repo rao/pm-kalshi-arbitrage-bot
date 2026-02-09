@@ -9,12 +9,16 @@ import {
   checkNotional,
   checkOpenOrderLimit,
   checkPositionBalance,
+  checkTimeToRollover,
+  runAllGuards,
 } from "../src/strategy/guards";
 import {
   calculateMinQuantityForPolymarket,
   POLYMARKET_MIN_ORDER_VALUE,
   POLYMARKET_MIN_SHARES,
+  RISK_PARAMS,
 } from "../src/config/riskParams";
+import type { GuardContext } from "../src/strategy/types";
 
 describe("price validation", () => {
   describe("isValidVenuePrice", () => {
@@ -312,6 +316,71 @@ describe("quantity calculation", () => {
         // Qty must be >= 5 shares
         expect(qty).toBeGreaterThanOrEqual(POLYMARKET_MIN_SHARES);
       }
+    });
+  });
+});
+
+describe("time to rollover guards", () => {
+  describe("checkTimeToRollover", () => {
+    test("passes when msUntilRollover > cutoff", () => {
+      expect(checkTimeToRollover(80000, 75000)).toEqual({ pass: true });
+    });
+
+    test("blocks when msUntilRollover < cutoff", () => {
+      const result = checkTimeToRollover(60000, 75000);
+      expect(result.pass).toBe(false);
+      expect(result.reason).toContain("Too close to rollover");
+      expect(result.reason).toContain("60s remaining");
+      expect(result.reason).toContain("cutoff=75s");
+    });
+
+    test("blocks at exactly cutoff boundary", () => {
+      const result = checkTimeToRollover(75000, 75000);
+      expect(result.pass).toBe(false);
+      expect(result.reason).toContain("Too close to rollover");
+    });
+
+    test("passes well above cutoff", () => {
+      expect(checkTimeToRollover(900000, 75000)).toEqual({ pass: true });
+    });
+  });
+
+  describe("runAllGuards with msUntilRollover", () => {
+    const baseContext: GuardContext = {
+      edgeNet: 0.05,
+      minEdge: 0.04,
+      yesSizeAvailable: 10,
+      noSizeAvailable: 10,
+      minSizePerLeg: 5,
+      lastFailureTs: null,
+      cooldownMs: 3000,
+      dailyLoss: 0,
+      maxDailyLoss: 20,
+      currentNotional: 0,
+      maxNotional: 592,
+      estimatedCost: 1,
+    };
+
+    test("blocks when msUntilRollover is below cutoff", () => {
+      const result = runAllGuards({
+        ...baseContext,
+        msUntilRollover: 60000,
+      });
+      expect(result.pass).toBe(false);
+      expect(result.reason).toContain("Too close to rollover");
+    });
+
+    test("passes when msUntilRollover is above cutoff", () => {
+      const result = runAllGuards({
+        ...baseContext,
+        msUntilRollover: 200000,
+      });
+      expect(result.pass).toBe(true);
+    });
+
+    test("passes when msUntilRollover is not provided", () => {
+      const result = runAllGuards(baseContext);
+      expect(result.pass).toBe(true);
     });
   });
 });

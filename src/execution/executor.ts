@@ -23,6 +23,7 @@ import type {
 } from "./types";
 import { generateExecutionId } from "./types";
 import { RISK_PARAMS, calculateMinQuantityForPolymarket } from "../config/riskParams";
+import { msUntilRollover } from "../time/interval";
 import {
   planLegOrder,
   buildOrderParams,
@@ -250,6 +251,7 @@ export async function executeOpportunity(
       polymarketOpenOrders: getOpenOrderCount("polymarket"),
       kalshiOpenOrders: getOpenOrderCount("kalshi"),
       maxOpenOrdersPerVenue: RISK_PARAMS.maxOpenOrdersPerVenue,
+      msUntilRollover: msUntilRollover(),
     };
 
     const guardResult = runAllGuards(guardContext);

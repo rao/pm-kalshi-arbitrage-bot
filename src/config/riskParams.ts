@@ -94,6 +94,8 @@ export const RISK_PARAMS = {
   volatilityExitBreakevenThresholdMs: 60000,
   /** Halt all trading in last N ms if volatile (1 min = 60000) */
   volatilityHaltWindowMs: 60000,
+  /** Hard cutoff: no new arb positions within this many ms of rollover (1m15s) */
+  noNewPositionsCutoffMs: 75000,
   /** Sell price offset below bid (1 tick) */
   volatilityExitSellPriceOffset: 0.01,
   /** Cooldown after all vol-exit sell targets fail before re-triggering (ms) */

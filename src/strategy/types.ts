@@ -92,6 +92,8 @@ export interface GuardContext {
   kalshiOpenOrders?: number;
   /** Maximum open orders per venue (optional) */
   maxOpenOrdersPerVenue?: number;
+  /** Milliseconds until next rollover (optional, for time cutoff guard) */
+  msUntilRollover?: number;
 }
 
 /**
