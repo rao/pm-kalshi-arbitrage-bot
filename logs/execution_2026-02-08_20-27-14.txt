@@ -1,0 +1,19 @@
+[2026-02-08T20:27:31.773Z] [BTC_PRICE] {"price":70983.8}
+[2026-02-08T20:27:46.773Z] [BTC_PRICE] {"price":70999.9}
+[2026-02-08T20:27:52.120Z] [LEG_FAIL] {"executionId":"exec_mle736ba_cehbpr","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-08T20:27:52.120Z] [EXECUTION_START] {"executionId":"exec_mle736ba_cehbpr","intervalKey":"20:15-20:30 UTC","expectedEdgeNet":0.12360000000000003,"legA":{"venue":"polymarket","side":"no","price":0.76},"legB":{"venue":"kalshi","side":"yes","price":0.09}}
+[2026-02-08T20:27:52.120Z] [LEG_SUBMIT] {"executionId":"exec_mle736ba_cehbpr","leg":"A","venue":"polymarket","side":"no","price":0.76,"qty":25,"clientOrderId":"polymarket_A_mle736ba_b32m"}
+[2026-02-08T20:27:52.121Z] [EXECUTION_COMPLETE] {"executionId":"exec_mle736ba_cehbpr","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":1026,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-08T20:28:01.773Z] [BTC_PRICE] {"price":70958.2}
+[2026-02-08T20:28:16.773Z] [BTC_PRICE] {"price":70938.9}
+[2026-02-08T20:28:31.774Z] [BTC_PRICE] {"price":70921.3}
+[2026-02-08T20:28:46.775Z] [BTC_PRICE] {"price":70908.2}
+[2026-02-08T20:29:01.776Z] [BTC_PRICE] {"price":70938.1}
+[2026-02-08T20:29:16.776Z] [BTC_PRICE] {"price":70980.9}
+[2026-02-08T20:29:31.777Z] [BTC_PRICE] {"price":70970.6}
+[2026-02-08T20:29:46.778Z] [BTC_PRICE] {"price":70961.6}
+[2026-02-08T20:30:01.778Z] [BTC_PRICE] {"price":70999.8}
+[2026-02-08T20:30:06.263Z] [EXECUTION_START] {"executionId":"exec_mle76268_t72ps7","intervalKey":"20:30-20:45 UTC","expectedEdgeNet":0.4927,"legA":{"venue":"polymarket","side":"no","price":0.47},"legB":{"venue":"kalshi","side":"yes","price":0.01}}
+[2026-02-08T20:30:06.263Z] [EXECUTION_COMPLETE] {"executionId":"exec_mle76268_t72ps7","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":567,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-08T20:30:06.263Z] [LEG_SUBMIT] {"executionId":"exec_mle76268_t72ps7","leg":"A","venue":"polymarket","side":"no","price":0.47,"qty":14,"clientOrderId":"polymarket_A_mle76268_0w85"}
+[2026-02-08T20:30:06.263Z] [LEG_FAIL] {"executionId":"exec_mle76268_t72ps7","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}

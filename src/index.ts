@@ -77,6 +77,17 @@ import {
 import { scheduleSettlementCheck } from "./data/settlementTracker";
 import { initSettlementLogger } from "./logging/settlementLogger";
 
+setInterval(() => {
+	  const mem = process.memoryUsage();
+	    console.log(JSON.stringify({
+		        rssMB: Math.round(mem.rss / 1024 / 1024),
+		           heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+			      heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+			          externalMB: Math.round(mem.external / 1024 / 1024),
+				      ts: Date.now()
+				        }));
+}, 10_000);
+
 /**
  * Quote cache - maintains latest quote per venue.
  */

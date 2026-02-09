@@ -227,18 +227,18 @@ export function createLogger(level: LogLevel = "info"): Logger {
       );
 
       // Heap memory usage
-      const mem = process.memoryUsage();
-      console.log(
-        `  Memory: heap ${(mem.heapUsed / 1024 / 1024).toFixed(1)}MB / ${(mem.heapTotal / 1024 / 1024).toFixed(1)}MB`
-      );
+ //     #console.log(
+   //    # `  Memory: heap ${(mem.heapUsed / 1024 / 1024).toFixed(1)}MB / ${(mem.heapTotal / 1024 / 1024).toFixed(1)}MB`
+//#     );
 
       // Tick health from quote processing latency
-      const tickStats = getLatencyStats().quoteProcessing;
-      if (tickStats.count > 0) {
-        console.log(
-          `  Tick health: avg=${tickStats.avg.toFixed(1)}ms, p99=${tickStats.p99.toFixed(1)}ms (n=${tickStats.count})`
-        );
-      }
+  //    const tickStats = getLatencyStats().quoteProcessing;
+    //  if (tickStats.count > 0) {
+      //  console.log(
+       //   `  Tick health: avg=${tickStats.avg.toFixed(1)}ms, p99=${tickStats.p99.toFixed(1)}ms (n=${tickStats.count})`
+      //  );
+	    //const mem = process.memoryUsage();
+    
 
       console.log("");
 
