@@ -13,7 +13,7 @@ import type { Logger } from "../logging/logger";
 import type { InitializedClients } from "./venueClientFactory";
 import type { IntervalMapping } from "../markets/mappingStore";
 import { Side as PolySide } from "../venues/polymarket/client";
-import { createOrder as kalshiCreateOrder } from "../venues/kalshi/orders";
+import { createOrder as kalshiCreateOrder, getFills as kalshiGetFills } from "../venues/kalshi/orders";
 import type { KalshiOrderRequest } from "../venues/kalshi/types";
 import { RISK_PARAMS } from "../config/riskParams";
 import { msUntilRollover, getIntervalKey } from "../time/interval";
@@ -408,6 +408,35 @@ async function sellKalshi(
 
   const response = await kalshiCreateOrder(clients.kalshi.auth, request);
   const order = response.order;
-  const fillQty = (order.count ?? 0) - (order.remaining_count ?? 0);
+  const responseFillQty = (order.count ?? 0) - (order.remaining_count ?? 0);
+
+  let fillQty = responseFillQty;
+
+  // CRITICAL: For IOC orders, query Fills API as authoritative source.
+  // remaining_count can equal count even when the order filled.
+  try {
+    await new Promise(r => setTimeout(r, 200));
+    const fillsResponse = await kalshiGetFills(clients.kalshi.auth, { order_id: order.order_id });
+    if (fillsResponse.fills.length > 0) {
+      let totalFillQty = 0;
+      for (const fill of fillsResponse.fills) {
+        totalFillQty += fill.count;
+      }
+      if (totalFillQty > 0) {
+        if (fillQty === 0) {
+          logger.warn(
+            `[PRE-CLOSE] Kalshi IOC fill detected via Fills API but NOT by order response! ` +
+            `remaining_count=${order.remaining_count}, count=${order.count}, fillsQty=${totalFillQty}`
+          );
+        }
+        fillQty = totalFillQty;
+      }
+    }
+  } catch (fillsError) {
+    logger.warn(
+      `[PRE-CLOSE] Failed to query Fills API for Kalshi IOC order, using order response: ${fillsError instanceof Error ? fillsError.message : String(fillsError)}`
+    );
+  }
+
   return fillQty;
 }

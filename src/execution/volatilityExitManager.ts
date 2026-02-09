@@ -17,7 +17,7 @@ import type { NormalizedQuote } from "../normalization/types";
 import type { Venue, Side } from "../strategy/types";
 import type { BtcPriceUpdate } from "../data/binanceWs";
 import { Side as PolySide } from "../venues/polymarket/client";
-import { createOrder as kalshiCreateOrder, getPortfolioPositions as kalshiGetPositions } from "../venues/kalshi/orders";
+import { createOrder as kalshiCreateOrder, getPortfolioPositions as kalshiGetPositions, getFills as kalshiGetFills } from "../venues/kalshi/orders";
 import type { KalshiOrderRequest } from "../venues/kalshi/types";
 import { RISK_PARAMS } from "../config/riskParams";
 import { msUntilRollover, getIntervalKey } from "../time/interval";
@@ -133,7 +133,8 @@ export class VolatilityExitManager {
     const analytics = getAnalytics();
     return (
       analytics.crossingCount >= RISK_PARAMS.volatilityExitCrossingThreshold &&
-      analytics.rangeUsd >= RISK_PARAMS.volatilityExitRangeThresholdUsd
+      analytics.rangeUsd >= RISK_PARAMS.volatilityExitRangeThresholdUsd &&
+      analytics.rangeUsd <= RISK_PARAMS.volatilityExitRangeMaxUsd
     );
   }
 
@@ -252,6 +253,7 @@ export class VolatilityExitManager {
     // Check trigger conditions
     if (analytics.crossingCount < RISK_PARAMS.volatilityExitCrossingThreshold) return;
     if (analytics.rangeUsd < RISK_PARAMS.volatilityExitRangeThresholdUsd) return;
+    if (analytics.rangeUsd > RISK_PARAMS.volatilityExitRangeMaxUsd) return;
 
     // Fix 2: Cooldown after all-targets-failed cycle
     if (this.lastFailedTriggerTs !== null) {
@@ -854,10 +856,43 @@ export class VolatilityExitManager {
 
     const response = await kalshiCreateOrder(kalshi.auth, request);
     const order = response.order;
-    const fillQty = (order.count ?? 0) - (order.remaining_count ?? 0);
+    const responseFillQty = (order.count ?? 0) - (order.remaining_count ?? 0);
+
+    let fillQty = responseFillQty;
+    let fillPrice = priceCents / 100;
+
+    // CRITICAL: For IOC orders, ALWAYS query Fills API as the authoritative source.
+    // The createOrder response may not accurately reflect IOC fills (remaining_count
+    // can equal count even when the order filled immediately).
+    try {
+      await new Promise(r => setTimeout(r, 200));
+      const fillsResponse = await kalshiGetFills(kalshi.auth, { order_id: order.order_id });
+      if (fillsResponse.fills.length > 0) {
+        let totalCost = 0;
+        let totalFillQty = 0;
+        for (const fill of fillsResponse.fills) {
+          const price = (target.side === "yes" ? fill.yes_price : fill.no_price) / 100;
+          totalCost += price * fill.count;
+          totalFillQty += fill.count;
+        }
+        if (totalFillQty > 0) {
+          if (fillQty === 0) {
+            this.deps.logger.warn(
+              `[VOL-EXIT] Kalshi IOC fill detected via Fills API but NOT by order response! ` +
+              `remaining_count=${order.remaining_count}, count=${order.count}, fillsQty=${totalFillQty}`
+            );
+          }
+          fillQty = totalFillQty;
+          fillPrice = totalCost / totalFillQty;
+        }
+      }
+    } catch (fillsError) {
+      this.deps.logger.warn(
+        `[VOL-EXIT] Failed to query Fills API for Kalshi IOC order, using order response: ${fillsError instanceof Error ? fillsError.message : String(fillsError)}`
+      );
+    }
 
     if (fillQty > 0) {
-      const fillPrice = priceCents / 100;
       recordFill(
         target.venue,
         target.side,

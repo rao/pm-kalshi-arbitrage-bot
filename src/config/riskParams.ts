@@ -77,7 +77,9 @@ export const RISK_PARAMS = {
   /** Min BTC reference crossings to trigger */
   volatilityExitCrossingThreshold: 2,
   /** Min BTC range (USD) within interval to trigger */
-  volatilityExitRangeThresholdUsd: 100,
+  volatilityExitRangeThresholdUsd: 50,
+  /** Max BTC range (USD) — above this, price moved directionally (no dead zone risk) */
+  volatilityExitRangeMaxUsd: 175,
   /** Min profit per contract to sell a side (bid - entry) */
   volatilityExitMinProfitPerShare: 0.02,
   /** Only activate in last N ms of interval (6 min = 360000) */

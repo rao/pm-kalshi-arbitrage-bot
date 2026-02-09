@@ -3,12 +3,30 @@
  *
  * Queries both venues after interval close to determine actual settlement outcomes.
  * Runs on a delay after rollover (venues need time to settle).
+ *
+ * IMPORTANT: All interval-end state (TWAP, spot, analytics, ref prices) is captured
+ * at rollover time into an IntervalCloseSnapshot and passed here. The delayed check
+ * only queries venue APIs for resolution — everything else is pre-captured.
  */
 
 import type { IntervalKey } from "../time/interval";
 import type { IntervalMapping } from "../markets/mappingStore";
 import type { Logger } from "../logging/logger";
-import { getFrozenTwap, getFrozenSpot } from "./twapStore";
+
+/**
+ * Immutable snapshot of interval-end state, captured at rollover BEFORE resets.
+ */
+export interface IntervalCloseSnapshot {
+  intervalKey: IntervalKey;
+  btcTwap60s: number | null;
+  btcSpot: number | null;
+  kalshiRefPrice: number | null;
+  polyRefPrice: number | null;
+  crossingCount: number;
+  rangeUsd: number;
+  distFromRefUsd: number;
+  mapping: IntervalMapping | null;
+}
 
 /**
  * Settlement outcome for a single interval.
@@ -23,14 +41,17 @@ export interface SettlementOutcome {
   polyResolution: "up" | "down" | "unknown";
   oraclesAgree: boolean;
   deadZoneHit: boolean;
+  crossingCount: number;
+  rangeUsd: number;
+  distFromRefUsd: number;
   checkedAt: number;
 }
 
 /** Maximum outcomes to keep in memory. */
 const MAX_OUTCOMES = 10;
 
-/** Delay before querying settlement (ms). */
-const SETTLEMENT_CHECK_DELAY_MS = 15_000;
+/** Retry schedule for resolution checks (ms after rollover). */
+const RETRY_DELAYS_MS = [15_000, 120_000, 300_000]; // 15s, 2min, 5min
 
 // --- Module state ---
 
@@ -71,6 +92,7 @@ function determineAgreement(
 async function queryKalshiSettlement(
   eventTicker: string,
   kalshiHost: string,
+  logger: Logger,
 ): Promise<"yes" | "no" | "unknown"> {
   try {
     const url = `${kalshiHost}/trade-api/v2/events/${eventTicker}?with_nested_markets=true`;
@@ -83,17 +105,24 @@ async function queryKalshiSettlement(
     });
     clearTimeout(timeoutId);
 
-    if (response.status !== 200) return "unknown";
+    if (response.status !== 200) {
+      logger.warn(`[SETTLEMENT] Kalshi query returned status ${response.status}`);
+      return "unknown";
+    }
 
     const data = await response.json();
     const market = data.event?.markets?.[0];
-    if (!market) return "unknown";
+    if (!market) {
+      logger.warn(`[SETTLEMENT] Kalshi event has no markets`);
+      return "unknown";
+    }
 
     if (market.result === "yes") return "yes";
     if (market.result === "no") return "no";
 
     return "unknown";
-  } catch {
+  } catch (error) {
+    logger.warn(`[SETTLEMENT] Kalshi query failed: ${error instanceof Error ? error.message : String(error)}`);
     return "unknown";
   }
 }
@@ -104,6 +133,7 @@ async function queryKalshiSettlement(
 async function queryPolymarketSettlement(
   slug: string,
   gammaHost: string,
+  logger: Logger,
 ): Promise<"up" | "down" | "unknown"> {
   try {
     const url = `${gammaHost}/markets/slug/${slug}`;
@@ -116,7 +146,10 @@ async function queryPolymarketSettlement(
     });
     clearTimeout(timeoutId);
 
-    if (response.status !== 200) return "unknown";
+    if (response.status !== 200) {
+      logger.warn(`[SETTLEMENT] Polymarket query returned status ${response.status}`);
+      return "unknown";
+    }
 
     const data = await response.json();
 
@@ -127,7 +160,8 @@ async function queryPolymarketSettlement(
     }
 
     return "unknown";
-  } catch {
+  } catch (error) {
+    logger.warn(`[SETTLEMENT] Polymarket query failed: ${error instanceof Error ? error.message : String(error)}`);
     return "unknown";
   }
 }
@@ -137,77 +171,109 @@ async function queryPolymarketSettlement(
 export interface SettlementCheckDeps {
   kalshiHost?: string;
   gammaHost?: string;
+  /** Override retry delays for testing. */
+  retryDelaysMs?: number[];
 }
 
 /**
  * Schedule a settlement check for the given interval.
  *
- * Fires after a delay to allow venues time to settle.
+ * Uses a pre-captured snapshot of interval-end state. The delayed checks
+ * only query venue APIs for resolution — everything else comes from the snapshot.
+ * Retries at increasing intervals if resolutions are still "unknown".
  */
 export function scheduleSettlementCheck(
-  intervalKey: IntervalKey,
-  mapping: IntervalMapping | null,
+  snapshot: IntervalCloseSnapshot,
   logger: Logger,
   deps?: SettlementCheckDeps,
 ): void {
-  const timer = setTimeout(async () => {
-    try {
-      await performSettlementCheck(intervalKey, mapping, logger, deps);
-    } catch (error) {
-      logger.error(
-        `[SETTLEMENT] Check failed: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }, SETTLEMENT_CHECK_DELAY_MS);
+  const delays = deps?.retryDelaysMs ?? RETRY_DELAYS_MS;
 
-  pendingTimers.push(timer);
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    const timer = setTimeout(async () => {
+      try {
+        // On retry, check if we already have a resolved outcome
+        if (attempt > 0) {
+          const existing = outcomes.get(outcomeKey(snapshot.intervalKey));
+          if (
+            existing &&
+            existing.kalshiResolution !== "unknown" &&
+            existing.polyResolution !== "unknown"
+          ) {
+            logger.debug(
+              `[SETTLEMENT] Retry ${attempt + 1} skipped — both resolutions already known`
+            );
+            return;
+          }
+          logger.info(
+            `[SETTLEMENT] Retry ${attempt + 1}/${delays.length} for ${snapshot.intervalKey.startTs}-${snapshot.intervalKey.endTs}`
+          );
+        }
+
+        await performSettlementCheck(snapshot, logger, deps);
+      } catch (error) {
+        logger.error(
+          `[SETTLEMENT] Check failed (attempt ${attempt + 1}): ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }, delays[attempt]);
+
+    pendingTimers.push(timer);
+  }
 }
 
 /**
  * Perform the actual settlement check (exposed for testing).
+ *
+ * Reads TWAP/spot/ref prices/analytics from the snapshot.
+ * Only queries venue APIs for resolution.
  */
 export async function performSettlementCheck(
-  intervalKey: IntervalKey,
-  mapping: IntervalMapping | null,
+  snapshot: IntervalCloseSnapshot,
   logger: Logger,
   deps?: SettlementCheckDeps,
 ): Promise<SettlementOutcome> {
   const kalshiHost = deps?.kalshiHost ?? "https://api.elections.kalshi.com";
   const gammaHost = deps?.gammaHost ?? "https://gamma-api.polymarket.com";
 
-  const btcTwap = getFrozenTwap();
-  const btcSpot = getFrozenSpot();
-  const kalshiRef = mapping?.kalshi?.referencePrice ?? null;
-  const polyRef = mapping?.polymarket?.referencePrice ?? null;
+  const mapping = snapshot.mapping;
 
-  // Query both venues in parallel
+  // Query both venues in parallel for resolution
   const [kalshiRes, polyRes] = await Promise.all([
     mapping?.kalshi?.eventTicker
-      ? queryKalshiSettlement(mapping.kalshi.eventTicker, kalshiHost)
+      ? queryKalshiSettlement(mapping.kalshi.eventTicker, kalshiHost, logger)
       : Promise.resolve("unknown" as const),
     mapping?.polymarket?.slug
-      ? queryPolymarketSettlement(mapping.polymarket.slug, gammaHost)
+      ? queryPolymarketSettlement(mapping.polymarket.slug, gammaHost, logger)
       : Promise.resolve("unknown" as const),
   ]);
 
-  // Determine oracle agreement from our local TWAP/spot data
-  const { agree, deadZone } = determineAgreement(btcTwap, btcSpot, kalshiRef, polyRef);
+  // Determine oracle agreement from snapshot data
+  const { agree, deadZone } = determineAgreement(
+    snapshot.btcTwap60s,
+    snapshot.btcSpot,
+    snapshot.kalshiRefPrice,
+    snapshot.polyRefPrice,
+  );
 
   const outcome: SettlementOutcome = {
-    intervalKey,
-    btcSpotAtClose: btcSpot,
-    btcTwap60sAtClose: btcTwap,
-    kalshiRefPrice: kalshiRef,
-    polyRefPrice: polyRef,
+    intervalKey: snapshot.intervalKey,
+    btcSpotAtClose: snapshot.btcSpot,
+    btcTwap60sAtClose: snapshot.btcTwap60s,
+    kalshiRefPrice: snapshot.kalshiRefPrice,
+    polyRefPrice: snapshot.polyRefPrice,
     kalshiResolution: kalshiRes,
     polyResolution: polyRes,
     oraclesAgree: agree,
     deadZoneHit: deadZone,
+    crossingCount: snapshot.crossingCount,
+    rangeUsd: snapshot.rangeUsd,
+    distFromRefUsd: snapshot.distFromRefUsd,
     checkedAt: Date.now(),
   };
 
   // Store outcome
-  const key = outcomeKey(intervalKey);
+  const key = outcomeKey(snapshot.intervalKey);
   outcomes.set(key, outcome);
 
   // Prune old outcomes
@@ -220,17 +286,20 @@ export async function performSettlementCheck(
 
   // Log the result
   const deadZoneTag = deadZone ? " [DEAD ZONE]" : "";
+  const resTag =
+    kalshiRes === "unknown" || polyRes === "unknown" ? " (pending)" : "";
   logger.info(
-    `[SETTLEMENT]${deadZoneTag} interval=${intervalKey.startTs}-${intervalKey.endTs} ` +
+    `[SETTLEMENT]${deadZoneTag}${resTag} interval=${snapshot.intervalKey.startTs}-${snapshot.intervalKey.endTs} ` +
     `kalshi=${kalshiRes} poly=${polyRes} agree=${agree} ` +
-    `twap=${btcTwap?.toFixed(0) ?? "?"} spot=${btcSpot?.toFixed(0) ?? "?"} ` +
-    `kRef=${kalshiRef?.toFixed(0) ?? "?"} pRef=${polyRef?.toFixed(0) ?? "?"}`
+    `twap=${snapshot.btcTwap60s?.toFixed(0) ?? "?"} spot=${snapshot.btcSpot?.toFixed(0) ?? "?"} ` +
+    `kRef=${snapshot.kalshiRefPrice?.toFixed(0) ?? "?"} pRef=${snapshot.polyRefPrice?.toFixed(0) ?? "?"} ` +
+    `crossings=${snapshot.crossingCount} range=$${snapshot.rangeUsd.toFixed(1)}`
   );
 
   // Write to settlements CSV
   try {
     const { logSettlement } = await import("../logging/settlementLogger");
-    logSettlement(outcome, mapping);
+    logSettlement(outcome, snapshot);
   } catch (error) {
     logger.error(
       `[SETTLEMENT] Failed to write CSV: ${error instanceof Error ? error.message : String(error)}`

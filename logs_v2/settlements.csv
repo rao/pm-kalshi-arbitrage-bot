@@ -1,3 +1,12 @@
 interval_start_ts,interval_end_ts,btc_ref_price_kalshi,btc_ref_price_poly,ref_price_diff_usd,btc_spot_at_close,btc_twap_60s_at_close,twap_spot_divergence_usd,kalshi_resolution,poly_resolution,oracles_agree,dead_zone_hit,btc_crossing_count,btc_range_usd,btc_dist_from_ref_at_close,checked_at
 interval_start_ts,interval_end_ts,btc_ref_price_kalshi,btc_ref_price_poly,ref_price_diff_usd,btc_spot_at_close,btc_twap_60s_at_close,twap_spot_divergence_usd,kalshi_resolution,poly_resolution,oracles_agree,dead_zone_hit,btc_crossing_count,btc_range_usd,btc_dist_from_ref_at_close,checked_at
 1000000,1000900,97330,97300,30,97369,97359.5,9.5,unknown,unknown,1,0,0,0,54,1770583203978
+1000000,1000900,97330,97300,30,97365,97360,5,unknown,unknown,1,0,5,150,40,1770609750343
+1000000,1000900,97330,97300,30,97355,97350,5,unknown,unknown,1,0,5,150,40,1770609750344
+1000000,1000900,97330,97300,30,97365,97360,5,unknown,unknown,1,0,5,150,40,1770609754455
+1000000,1000900,97330,97300,30,97355,97350,5,unknown,unknown,1,0,5,150,40,1770609754463
+1000000,1000900,,,,97355,97350,5,unknown,unknown,1,0,5,150,40,1770609754463
+1000000,1000900,97330,97300,30,,,,unknown,unknown,1,0,5,150,40,1770609754463
+1000000,1000900,97330,97300,30,97315,97315,0,unknown,unknown,0,1,5,150,40,1770609754463
+1000000,1000900,97330,97300,30,97405,97400,5,unknown,unknown,1,0,7,200,40,1770609754463
+1000000,1000900,97330,97300,30,97365,97360,5,unknown,unknown,1,0,5,150,40,1770609875003

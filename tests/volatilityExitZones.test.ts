@@ -1,12 +1,18 @@
 import { test, expect, describe, beforeEach, mock } from "bun:test";
 
-// Mock kalshi createOrder BEFORE importing volatilityExitManager
+// Mock kalshi createOrder and getFills BEFORE importing volatilityExitManager
 const mockKalshiCreateOrder = mock(async () => ({
-  order: { count: 5, remaining_count: 0 },
+  order: { count: 5, remaining_count: 0, order_id: "test-order-123", side: "no" },
+}));
+
+const mockKalshiGetFills = mock(async () => ({
+  fills: [],
+  cursor: "",
 }));
 
 mock.module("../src/venues/kalshi/orders", () => ({
   createOrder: mockKalshiCreateOrder,
+  getFills: mockKalshiGetFills,
 }));
 
 import {

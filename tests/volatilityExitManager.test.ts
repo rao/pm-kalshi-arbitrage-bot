@@ -1,12 +1,18 @@
 import { test, expect, describe, beforeEach, mock } from "bun:test";
 
-// Mock kalshi createOrder BEFORE importing volatilityExitManager
+// Mock kalshi createOrder and getFills BEFORE importing volatilityExitManager
 const mockKalshiCreateOrder = mock(async () => ({
-  order: { count: 5, remaining_count: 0 },
+  order: { count: 5, remaining_count: 0, order_id: "test-order-123", side: "no" },
+}));
+
+const mockKalshiGetFills = mock(async () => ({
+  fills: [],
+  cursor: "",
 }));
 
 mock.module("../src/venues/kalshi/orders", () => ({
   createOrder: mockKalshiCreateOrder,
+  getFills: mockKalshiGetFills,
 }));
 
 import {
@@ -106,9 +112,13 @@ describe("VolatilityExitManager", () => {
     resetStore();
     resetPositionTracker();
     resetAllState();
-    // Reset Kalshi mock to default (successful fill)
+    // Reset Kalshi mocks to default
     mockKalshiCreateOrder.mockImplementation(async () => ({
-      order: { count: 5, remaining_count: 0 },
+      order: { count: 5, remaining_count: 0, order_id: "test-order-123", side: "no" },
+    }));
+    mockKalshiGetFills.mockImplementation(async () => ({
+      fills: [],
+      cursor: "",
     }));
   });
 
@@ -561,10 +571,10 @@ describe("VolatilityExitManager", () => {
 
       // Build up 3 crossings and range while IDLE (outside window)
       await manager.onBtcPriceUpdate(makeUpdate(100000)); // sets ref
-      await manager.onBtcPriceUpdate(makeUpdate(100100)); // above
-      await manager.onBtcPriceUpdate(makeUpdate(99900));  // cross 1, range=200
-      await manager.onBtcPriceUpdate(makeUpdate(100100)); // cross 2
-      await manager.onBtcPriceUpdate(makeUpdate(99900));  // cross 3
+      await manager.onBtcPriceUpdate(makeUpdate(100075)); // above
+      await manager.onBtcPriceUpdate(makeUpdate(99925));  // cross 1, range=150
+      await manager.onBtcPriceUpdate(makeUpdate(100075)); // cross 2
+      await manager.onBtcPriceUpdate(makeUpdate(99925));  // cross 3
       expect(manager.getState()).toBe("IDLE");
 
       // Enter the window → MONITORING, crossings reset
@@ -573,7 +583,7 @@ describe("VolatilityExitManager", () => {
       expect(manager.getState()).toBe("MONITORING");
 
       // Now in MONITORING, crossings should be 0, so trigger should NOT fire
-      // even though range ($200) still exceeds threshold.
+      // even though range ($150) still exceeds threshold.
       // The tick that entered MONITORING (100050) had its recordPrice before
       // the reset, so post-reset lastSide=null. Next tick establishes side
       // without counting as crossing.
@@ -1272,6 +1282,214 @@ describe("VolatilityExitManager", () => {
       }
 
       expect(apiCallCount).toBe(apiCallsAfterEntry); // no additional API calls
+    });
+  });
+
+  describe("Kalshi IOC fill detection via Fills API", () => {
+    test("detects fill via Fills API when order response shows no fill", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      recordFill("kalshi", "no", "buy", 5, 0.40, intervalKey, "fill1", "KXBTC-100000");
+
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);
+      recordPrice(99940, now + 1);
+      recordPrice(100050, now + 2);
+      recordPrice(99950, now + 3);
+
+      // Order response shows NO fill (remaining_count === count) — the bug
+      mockKalshiCreateOrder.mockImplementation(async () => ({
+        order: { count: 5, remaining_count: 5, order_id: "ioc-order-456", side: "no", status: "canceled" },
+      }));
+
+      // But Fills API shows it actually filled
+      mockKalshiGetFills.mockImplementation(async () => ({
+        fills: [
+          { fill_id: "f1", ticker: "KXBTC-100000", order_id: "ioc-order-456", side: "no", action: "sell", count: 5, yes_price: 50, no_price: 50 },
+        ],
+        cursor: "",
+      }));
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: () => {},
+            warn: (msg: string) => logs.push(`WARN: ${msg}`),
+            error: (msg: string) => logs.push(`ERROR: ${msg}`),
+          } as any,
+          dryRun: false,
+          getMsUntilRollover: () => 30000, // emergency zone
+          venueClients: {
+            polymarket: null,
+            kalshi: { auth: { token: "t", keyId: "k" } } as any,
+          },
+          fetchApiPositions: async () => ({
+            polymarket: { yes: 0, no: 0 },
+            kalshi: { yes: 0, no: 5 },
+          }),
+        })
+      );
+
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Should detect fill via Fills API and log the warning
+      expect(logs.some((l) => l.includes("IOC fill detected via Fills API but NOT by order response"))).toBe(true);
+      // Should have completed the sell
+      expect(logs.some((l) => l.includes("First sell complete: 5"))).toBe(true);
+    });
+
+    test("falls back to order response when Fills API fails", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      recordFill("kalshi", "no", "buy", 5, 0.40, intervalKey, "fill1", "KXBTC-100000");
+
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);
+      recordPrice(99940, now + 1);
+      recordPrice(100050, now + 2);
+      recordPrice(99950, now + 3);
+
+      // Order response shows fill (normal case)
+      mockKalshiCreateOrder.mockImplementation(async () => ({
+        order: { count: 5, remaining_count: 0, order_id: "ioc-order-789", side: "no" },
+      }));
+
+      // Fills API throws
+      mockKalshiGetFills.mockImplementation(async () => {
+        throw new Error("network error");
+      });
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: () => {},
+            warn: (msg: string) => logs.push(`WARN: ${msg}`),
+            error: (msg: string) => logs.push(`ERROR: ${msg}`),
+          } as any,
+          dryRun: false,
+          getMsUntilRollover: () => 30000,
+          venueClients: {
+            polymarket: null,
+            kalshi: { auth: { token: "t", keyId: "k" } } as any,
+          },
+          fetchApiPositions: async () => ({
+            polymarket: { yes: 0, no: 0 },
+            kalshi: { yes: 0, no: 5 },
+          }),
+        })
+      );
+
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Should log the Fills API failure
+      expect(logs.some((l) => l.includes("Failed to query Fills API"))).toBe(true);
+      // Should still detect the fill from order response and succeed
+      expect(logs.some((l) => l.includes("First sell complete: 5"))).toBe(true);
+    });
+  });
+
+  describe("max range threshold", () => {
+    test("does not trigger when range exceeds max threshold", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      recordFill("polymarket", "yes", "buy", 5, 0.40, intervalKey, "fill1", "up-token-123");
+      recordFill("kalshi", "no", "buy", 5, 0.40, intervalKey, "fill2", "KXBTC-100000");
+
+      // Set up conditions with LARGE range ($423) — directional move, not dead zone
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100200, now);     // above
+      recordPrice(99777, now + 1);  // below — crossing 1, range=423
+      recordPrice(100200, now + 2); // crossing 2
+      recordPrice(99777, now + 3);  // crossing 3
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: () => {},
+            warn: (msg: string) => logs.push(`WARN: ${msg}`),
+            error: (msg: string) => logs.push(`ERROR: ${msg}`),
+          } as any,
+          dryRun: true,
+          getMsUntilRollover: () => 300000,
+        })
+      );
+
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Should NOT trigger — range exceeds $175 max
+      expect(manager.isActive()).toBe(false);
+      expect(manager.getState()).toBe("MONITORING");
+      expect(logs.some((l) => l.includes("TRIGGERED"))).toBe(false);
+    });
+
+    test("triggers when range is within window ($50-$175)", async () => {
+      const intervalKey = makeCurrentIntervalKey();
+      recordFill("polymarket", "yes", "buy", 5, 0.40, intervalKey, "fill1", "up-token-123");
+      recordFill("kalshi", "no", "buy", 5, 0.40, intervalKey, "fill2", "KXBTC-100000");
+
+      // Range = $120 (within $50-$175)
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100060, now);
+      recordPrice(99940, now + 1);  // crossing 1, range=120
+      recordPrice(100050, now + 2); // crossing 2
+      recordPrice(99950, now + 3);  // crossing 3 (not needed if threshold=2, but safe)
+
+      const logs: string[] = [];
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          logger: {
+            info: (msg: string) => logs.push(msg),
+            debug: () => {},
+            warn: (msg: string) => logs.push(`WARN: ${msg}`),
+            error: (msg: string) => logs.push(`ERROR: ${msg}`),
+          } as any,
+          dryRun: true,
+          getMsUntilRollover: () => 300000,
+        })
+      );
+
+      (manager as any).state = "MONITORING";
+      (manager as any).referenceSet = true;
+
+      await manager.onBtcPriceUpdate(makeUpdate(100050));
+
+      // Should trigger
+      expect(logs.some((l) => l.includes("TRIGGERED"))).toBe(true);
+    });
+
+    test("shouldHaltTrading returns false when range exceeds max", () => {
+      // Set up volatile data with large range
+      setReferencePrice(100000);
+      const now = Date.now();
+      recordPrice(100300, now);
+      recordPrice(99700, now + 1); // crossing 1, range=600
+      recordPrice(100300, now + 2); // crossing 2
+      recordPrice(99700, now + 3); // crossing 3
+
+      const manager = new VolatilityExitManager(
+        createMockDeps({
+          getMsUntilRollover: () => 30000, // in halt window
+        })
+      );
+
+      // Even though crossings >= threshold and in halt window, range is too large
+      expect(manager.shouldHaltTrading()).toBe(false);
     });
   });
 

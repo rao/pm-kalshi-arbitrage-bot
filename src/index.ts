@@ -74,8 +74,9 @@ import {
   getFrozenTwap,
   getFrozenSpot,
 } from "./data/twapStore";
-import { scheduleSettlementCheck } from "./data/settlementTracker";
+import { scheduleSettlementCheck, type IntervalCloseSnapshot } from "./data/settlementTracker";
 import { initSettlementLogger } from "./logging/settlementLogger";
+import { getAnalytics } from "./data/btcPriceStore";
 
 /**
  * Quote cache - maintains latest quote per venue.
@@ -357,7 +358,21 @@ function handleCoordinatorEvent(event: CoordinatorEvent): void {
       // 3. Capture old mapping before it might get pruned
       const oldMapping = state.discovery?.getStore().getMapping(event.oldInterval) ?? null;
 
-      // 4. Settle pending PnL for the old interval (contracts settle at interval end)
+      // 4. Capture ALL interval-end state into immutable snapshot BEFORE any resets
+      const analytics = getAnalytics();
+      const snapshot: IntervalCloseSnapshot = {
+        intervalKey: event.oldInterval,
+        btcTwap60s: getFrozenTwap(),
+        btcSpot: getFrozenSpot(),
+        kalshiRefPrice: oldMapping?.kalshi?.referencePrice ?? null,
+        polyRefPrice: oldMapping?.polymarket?.referencePrice ?? null,
+        crossingCount: analytics.crossingCount,
+        rangeUsd: analytics.rangeUsd,
+        distFromRefUsd: analytics.distFromRefUsd,
+        mapping: oldMapping,
+      };
+
+      // 5. Settle pending PnL for the old interval (contracts settle at interval end)
       const settlementResult = settlePending(event.oldInterval);
       if (settlementResult.settled.length > 0) {
         state.logger.info(
@@ -366,32 +381,27 @@ function handleCoordinatorEvent(event: CoordinatorEvent): void {
         );
       }
 
-      // 5. Dead zone early warning (before async settlement check)
-      const frozenTwap = getFrozenTwap();
-      const frozenSpot = getFrozenSpot();
-      const kalshiRef = oldMapping?.kalshi?.referencePrice;
-      const polyRef = oldMapping?.polymarket?.referencePrice;
-
-      if (kalshiRef && polyRef && frozenTwap && frozenSpot) {
-        const kalshiSaysUp = frozenTwap >= kalshiRef;
-        const polySaysUp = frozenSpot >= polyRef;
+      // 6. Dead zone early warning (uses snapshot data)
+      if (snapshot.kalshiRefPrice && snapshot.polyRefPrice && snapshot.btcTwap60s && snapshot.btcSpot) {
+        const kalshiSaysUp = snapshot.btcTwap60s >= snapshot.kalshiRefPrice;
+        const polySaysUp = snapshot.btcSpot >= snapshot.polyRefPrice;
         if (kalshiSaysUp !== polySaysUp) {
           state.logger.error(
             `[DEAD ZONE] Oracle disagreement! ` +
-            `Kalshi: ${kalshiSaysUp ? "UP" : "DOWN"} (TWAP=$${frozenTwap.toFixed(0)} vs ref=$${kalshiRef.toFixed(0)}), ` +
-            `Poly: ${polySaysUp ? "UP" : "DOWN"} (spot=$${frozenSpot.toFixed(0)} vs ref=$${polyRef.toFixed(0)})`
+            `Kalshi: ${kalshiSaysUp ? "UP" : "DOWN"} (TWAP=$${snapshot.btcTwap60s.toFixed(0)} vs ref=$${snapshot.kalshiRefPrice.toFixed(0)}), ` +
+            `Poly: ${polySaysUp ? "UP" : "DOWN"} (spot=$${snapshot.btcSpot.toFixed(0)} vs ref=$${snapshot.polyRefPrice.toFixed(0)})`
           );
         }
       }
 
-      // 6. Schedule async settlement check (queries venues after 15s delay)
-      scheduleSettlementCheck(event.oldInterval, oldMapping, state.logger);
+      // 7. Schedule async settlement check with captured snapshot
+      scheduleSettlementCheck(snapshot, state.logger);
 
-      // 7. Clear position tracker for old interval (prevents stale positions carrying over)
+      // 8. Clear position tracker for old interval (prevents stale positions carrying over)
       clearPositionsForInterval(event.oldInterval);
       state.logger.info(`Cleared positions for interval ${formatIntervalKey(event.oldInterval)}`);
 
-      // 8. Reset BTC price store, TWAP store, and volatility exit manager for new interval
+      // 9. Reset BTC price store, TWAP store, and volatility exit manager for new interval
       resetBtcPriceStore();
       twapResetForInterval();
       state.volatilityExitManager?.resetForInterval();
