@@ -1,6 +1,7 @@
 import { test, expect, describe, beforeEach } from "bun:test";
 import {
   reconcileTick,
+  resetReconcilerState,
   type PositionReconcilerOptions,
   type VenuePositionReport,
 } from "../src/state/positionReconciler";
@@ -159,6 +160,7 @@ function buildOptions(overrides: {
 beforeEach(() => {
   resetPositionTracker();
   resetAllState();
+  resetReconcilerState();
   placedOrders = [];
   orderResults = [];
 });
@@ -418,6 +420,159 @@ describe("positionReconciler", () => {
       await reconcileTick(options);
 
       expect(placedOrders.length).toBe(0);
+    });
+  });
+
+  describe("stability-based confirmation for large divergences", () => {
+    test("does NOT override when API shows massive divergence on first read", async () => {
+      // Local tracker: poly yes=425, kalshi no=425 (balanced box)
+      setVenuePositions("polymarket", { yes: 425, no: 0 });
+      setVenuePositions("kalshi", { yes: 0, no: 425 });
+      resetLastExecutionEndTs();
+
+      // Venue API returns kalshi no=0 (stale!) — massive divergence (425)
+      const options = buildOptions({
+        polyYes: 425,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 0, // stale!
+      });
+
+      await reconcileTick(options);
+
+      // Kalshi positions should NOT be overridden — first read, awaiting confirmation
+      const pos = getPositions();
+      expect(pos.kalshi.no).toBe(425); // local preserved
+      expect(placedOrders.length).toBe(0);
+    });
+
+    test("does NOT override when API keeps changing (0 → 144 — still settling)", async () => {
+      setVenuePositions("polymarket", { yes: 425, no: 0 });
+      setVenuePositions("kalshi", { yes: 0, no: 425 });
+      resetLastExecutionEndTs();
+
+      // First tick: API returns kalshi no=0
+      let options = buildOptions({
+        polyYes: 425,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 0,
+      });
+      await reconcileTick(options);
+
+      // Second tick: API returns kalshi no=144 (catching up but still wrong)
+      options = buildOptions({
+        polyYes: 425,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 144,
+      });
+      await reconcileTick(options);
+
+      // Still should NOT override — API changed from 0→144, not stable
+      const pos = getPositions();
+      expect(pos.kalshi.no).toBe(425); // local preserved
+      expect(placedOrders.length).toBe(0);
+    });
+
+    test("overrides after two consecutive stable divergent reads", async () => {
+      setVenuePositions("polymarket", { yes: 425, no: 0 });
+      setVenuePositions("kalshi", { yes: 0, no: 425 });
+      resetLastExecutionEndTs();
+
+      // First tick: API returns kalshi no=420 (real but slightly different)
+      let options = buildOptions({
+        polyYes: 425,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 420,
+      });
+      await reconcileTick(options);
+
+      // Second tick: API returns kalshi no=420 again (stable)
+      options = buildOptions({
+        polyYes: 425,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 420,
+      });
+      await reconcileTick(options);
+
+      // NOW should override — two consecutive reads agree
+      const pos = getPositions();
+      expect(pos.kalshi.no).toBe(420);
+    });
+
+    test("stable reads within tolerance (2 contracts) also confirm", async () => {
+      setVenuePositions("polymarket", { yes: 425, no: 0 });
+      setVenuePositions("kalshi", { yes: 0, no: 425 });
+      resetLastExecutionEndTs();
+
+      // First tick: API returns kalshi no=420
+      let options = buildOptions({
+        polyYes: 425,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 420,
+      });
+      await reconcileTick(options);
+
+      // Second tick: API returns kalshi no=421 (within 2-contract tolerance)
+      options = buildOptions({
+        polyYes: 425,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 421,
+      });
+      await reconcileTick(options);
+
+      // Should override — 420 and 421 within tolerance
+      const pos = getPositions();
+      expect(pos.kalshi.no).toBe(421);
+    });
+
+    test("small divergences (< 5) override immediately without confirmation", async () => {
+      setVenuePositions("polymarket", { yes: 10, no: 0 });
+      setVenuePositions("kalshi", { yes: 0, no: 10 });
+      resetLastExecutionEndTs();
+
+      // API shows kalshi no=7 (diff=3, below threshold of 5)
+      const options = buildOptions({
+        polyYes: 10,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 7,
+      });
+
+      await reconcileTick(options);
+
+      // Should override immediately — small divergence
+      const pos = getPositions();
+      expect(pos.kalshi.no).toBe(7);
+    });
+  });
+
+  describe("corrective action qty cap", () => {
+    test("caps corrective action at maxReconcilerActionQty (50)", async () => {
+      // Create a 200-contract imbalance
+      setVenuePositions("polymarket", { yes: 200, no: 0 });
+      setVenuePositions("kalshi", { yes: 0, no: 0 });
+      resetLastExecutionEndTs();
+
+      // API confirms the imbalance (small divergence for kalshi=0 → instant override)
+      orderResults = [makeSuccessResult("kalshi")];
+      const options = buildOptions({
+        polyYes: 200,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 0,
+      });
+
+      await reconcileTick(options);
+
+      // Corrective order should be placed, but capped at 50
+      expect(placedOrders.length).toBe(1);
+      expect(placedOrders[0].qty).toBe(50);
     });
   });
 

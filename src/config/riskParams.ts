@@ -55,7 +55,11 @@ export const RISK_PARAMS = {
   /** Minimum cash balance per venue before kill switch triggers ($) */
   minVenueBalance: 10.0,
   /** Grace period after execution before reconciler acts (ms). Polymarket on-chain settlement can take 5-15s. */
-  reconcilerPostExecGracePeriodMs: 30000,
+  reconcilerPostExecGracePeriodMs: 60000,
+  /** Max position divergence (contracts) that can be overridden immediately without stability confirmation */
+  maxReconcilerInstantOverrideQty: 5,
+  /** Max contracts the reconciler can sell/buy in a single corrective action */
+  maxReconcilerActionQty: 50,
   /**
    * Cost bonus for preferred box config (Poly YES + Kalshi NO).
    * Config 2 (Kalshi YES + Poly NO) must be cheaper by at least this amount to be chosen.

@@ -65,6 +65,9 @@ export interface PositionReconcilerOptions {
 /** Module-level timer handle */
 let reconcilerInterval: ReturnType<typeof setInterval> | null = null;
 
+/** Previous API readings per venue — for stability-based confirmation of large divergences. */
+const previousApiReading = new Map<Venue, VenuePositionReport>();
+
 /**
  * Start the periodic position reconciler.
  */
@@ -92,6 +95,14 @@ export function stopPositionReconciler(): void {
     clearInterval(reconcilerInterval);
     reconcilerInterval = null;
   }
+  resetReconcilerState();
+}
+
+/**
+ * Reset reconciler stability-tracking state. Called from stopPositionReconciler() and tests.
+ */
+export function resetReconcilerState(): void {
+  previousApiReading.clear();
 }
 
 /**
@@ -163,6 +174,9 @@ async function fetchPolymarketPositions(
 /**
  * Compare local tracker against venue-reported positions and override if different.
  *
+ * Large divergences require two consecutive stable API reads before overriding,
+ * to protect against eventually-consistent venue APIs returning stale data.
+ *
  * @returns true if any mismatch was detected and overridden
  */
 function compareAndOverride(
@@ -171,6 +185,7 @@ function compareAndOverride(
 ): boolean {
   const local = getPositions();
   let mismatchFound = false;
+  const instantThreshold = RISK_PARAMS.maxReconcilerInstantOverrideQty;
 
   for (const report of reports) {
     const localPos = local[report.venue];
@@ -182,11 +197,19 @@ function compareAndOverride(
     const yesMismatch = Math.abs(localYes - report.yes) > tolerance;
     const noMismatch = Math.abs(localNo - report.no) > tolerance;
 
-    if (yesMismatch || noMismatch) {
-      const maxDiff = Math.max(
-        Math.abs(localYes - report.yes),
-        Math.abs(localNo - report.no)
-      );
+    if (!yesMismatch && !noMismatch) {
+      // Readings match local — clear any pending confirmation
+      previousApiReading.delete(report.venue);
+      continue;
+    }
+
+    const maxDiff = Math.max(
+      Math.abs(localYes - report.yes),
+      Math.abs(localNo - report.no)
+    );
+
+    // Small divergences: override immediately (handles fractional fill drift)
+    if (maxDiff < instantThreshold) {
       const logFn = maxDiff >= 1.0 ? logger.warn.bind(logger) : logger.info.bind(logger);
       logFn(
         `[RECONCILER] ${maxDiff >= 1.0 ? "MISMATCH" : "Adjusting"} on ${report.venue}: ` +
@@ -194,7 +217,49 @@ function compareAndOverride(
           `venue(yes=${report.yes}, no=${report.no}) — overriding local`
       );
       setVenuePositions(report.venue, { yes: report.yes, no: report.no });
+      previousApiReading.delete(report.venue);
       mismatchFound = true;
+      continue;
+    }
+
+    // Large divergence: require stability confirmation (two consecutive matching reads)
+    const prev = previousApiReading.get(report.venue);
+    if (!prev) {
+      // First divergent read — store as pending, do NOT override yet
+      previousApiReading.set(report.venue, { ...report });
+      logger.warn(
+        `[RECONCILER] Large divergence on ${report.venue}: ` +
+          `local(yes=${localYes}, no=${localNo}) vs ` +
+          `venue(yes=${report.yes}, no=${report.no}) — ` +
+          `awaiting confirmation (first read, NOT overriding)`
+      );
+      continue;
+    }
+
+    // We have a previous reading — check if current matches it (API stabilized)
+    const stabilityTolerance = 2; // contracts
+    const prevYesDiff = Math.abs(prev.yes - report.yes);
+    const prevNoDiff = Math.abs(prev.no - report.no);
+
+    if (prevYesDiff <= stabilityTolerance && prevNoDiff <= stabilityTolerance) {
+      // Two consecutive reads agree — API has stabilized. Override local.
+      logger.warn(
+        `[RECONCILER] CONFIRMED MISMATCH on ${report.venue}: ` +
+          `local(yes=${localYes}, no=${localNo}) vs ` +
+          `venue(yes=${report.yes}, no=${report.no}) — ` +
+          `stable across 2 reads, overriding local`
+      );
+      setVenuePositions(report.venue, { yes: report.yes, no: report.no });
+      previousApiReading.delete(report.venue);
+      mismatchFound = true;
+    } else {
+      // API still changing (e.g. 0 → 144) — store new reading, skip override
+      previousApiReading.set(report.venue, { ...report });
+      logger.warn(
+        `[RECONCILER] API still settling on ${report.venue}: ` +
+          `prev(yes=${prev.yes}, no=${prev.no}) → ` +
+          `now(yes=${report.yes}, no=${report.no}) — NOT overriding`
+      );
     }
   }
 
@@ -294,10 +359,14 @@ function planCorrectiveAction(
       : mapping.polymarket.downToken;
   }
 
+  // Cap corrective action size per cycle to limit damage
+  const cappedQty = Math.min(Math.round(imbalanceQty), RISK_PARAMS.maxReconcilerActionQty);
+
   logger.info(
     `[RECONCILER] Unhedged: totalYes=${totalYes}, totalNo=${totalNo}, ` +
-      `excess=${excessSide} on ${excessVenue}, missing=${missingSide}. ` +
-      `Complete PnL=$${completeNetPnl.toFixed(4)}, Unwind recovery=$${unwindRecovery.toFixed(4)}`
+      `excess=${excessSide} on ${excessVenue}, missing=${missingSide}` +
+      (cappedQty < Math.round(imbalanceQty) ? ` (capped ${Math.round(imbalanceQty)}→${cappedQty})` : "") +
+      `. Complete PnL=$${completeNetPnl.toFixed(4)}, Unwind recovery=$${unwindRecovery.toFixed(4)}`
   );
 
   // Pick whichever loses less money (or makes more)
@@ -306,7 +375,7 @@ function planCorrectiveAction(
       type: "complete",
       venue: completeVenue,
       side: missingSide,
-      qty: Math.round(imbalanceQty), // contracts are integers
+      qty: cappedQty,
       price: completeAsk,
       marketId: completeMarketId,
       estimatedPnlImpact: completeNetPnl,
@@ -316,7 +385,7 @@ function planCorrectiveAction(
       type: "unwind",
       venue: excessVenue,
       side: excessSide,
-      qty: Math.round(imbalanceQty),
+      qty: cappedQty,
       price: unwindBid,
       marketId: unwindMarketId,
       estimatedPnlImpact: -((excessSide === "yes" ? completeAsk : completeAsk) * imbalanceQty - unwindRecovery),
