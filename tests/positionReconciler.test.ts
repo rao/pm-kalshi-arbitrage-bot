@@ -499,8 +499,10 @@ describe("positionReconciler", () => {
       await reconcileTick(options);
 
       // NOW should override — two consecutive reads agree
+      // After override to 420, reconciler sees imbalance (425 vs 420) and buys 5 NO on Kalshi.
+      // Mock fills 1 contract, local position updated: 420 + 1 = 421
       const pos = getPositions();
-      expect(pos.kalshi.no).toBe(420);
+      expect(pos.kalshi.no).toBe(421);
     });
 
     test("stable reads within tolerance (2 contracts) also confirm", async () => {
@@ -526,9 +528,10 @@ describe("positionReconciler", () => {
       });
       await reconcileTick(options);
 
-      // Should override — 420 and 421 within tolerance
+      // Should override to 421, then reconciler sees imbalance (425 vs 421) and buys 4 NO.
+      // Mock fills 1 contract, local position updated: 421 + 1 = 422
       const pos = getPositions();
-      expect(pos.kalshi.no).toBe(421);
+      expect(pos.kalshi.no).toBe(422);
     });
 
     test("small divergences (< 5) override immediately without confirmation", async () => {
@@ -546,9 +549,10 @@ describe("positionReconciler", () => {
 
       await reconcileTick(options);
 
-      // Should override immediately — small divergence
+      // Should override to 7, then reconciler sees imbalance (10 vs 7) and buys 3 NO.
+      // Mock fills 1 contract, local position updated: 7 + 1 = 8
       const pos = getPositions();
-      expect(pos.kalshi.no).toBe(7);
+      expect(pos.kalshi.no).toBe(8);
     });
   });
 
@@ -573,6 +577,202 @@ describe("positionReconciler", () => {
       // Corrective order should be placed, but capped at 50
       expect(placedOrders.length).toBe(1);
       expect(placedOrders[0].qty).toBe(50);
+    });
+  });
+
+  describe("local position update after corrective fill", () => {
+    test("updates local positions after corrective complete on Kalshi (auto-netting)", async () => {
+      // Poly YES=10, Kalshi NO=10 (balanced box)
+      // Then Kalshi reports NO=8 → override makes totalYes=10, totalNo=8 → imbalance of 2
+      // Reconciler buys 2 Kalshi NO to complete (since Kalshi preferred for completion)
+      // But wait — the missing side is NO, so it buys NO on Kalshi.
+      // Kalshi auto-netting: buying NO when holding NO just adds to NO position.
+      // Actually, let's set up: Poly YES=10, Kalshi NO=0 → missing NO, buy 10 NO on Kalshi
+      setVenuePositions("polymarket", { yes: 10, no: 0 });
+      setVenuePositions("kalshi", { yes: 0, no: 0 });
+      resetLastExecutionEndTs();
+
+      const fillResult: OrderResult = {
+        success: true,
+        orderId: "order-test",
+        fillQty: 10,
+        fillPrice: 0.50,
+        venue: "kalshi",
+        status: "filled",
+        submittedAt: Date.now(),
+        filledAt: Date.now(),
+        error: null,
+      };
+
+      const options = buildOptions({
+        polyYes: 10,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 0,
+        venueClientsResult: fillResult,
+      });
+
+      await reconcileTick(options);
+
+      // After corrective buy of 10 NO on Kalshi, local should be updated
+      const pos = getPositions();
+      expect(pos.kalshi.no).toBe(10);
+      expect(pos.kalshi.yes).toBe(0);
+      expect(placedOrders.length).toBe(1);
+    });
+
+    test("handles Kalshi auto-netting when buying YES against existing NO position", async () => {
+      // Poly YES=0, Kalshi NO=20 → totalYes=0, totalNo=20 → excess NO
+      // Reconciler decides to complete by buying YES on Kalshi
+      // Kalshi auto-nets: buy 20 YES against 20 NO → NO reduced by 20, YES stays 0
+      setVenuePositions("polymarket", { yes: 0, no: 0 });
+      setVenuePositions("kalshi", { yes: 0, no: 20 });
+      resetLastExecutionEndTs();
+
+      const fillResult: OrderResult = {
+        success: true,
+        orderId: "order-test",
+        fillQty: 20,
+        fillPrice: 0.50,
+        venue: "kalshi",
+        status: "filled",
+        submittedAt: Date.now(),
+        filledAt: Date.now(),
+        error: null,
+      };
+
+      const options = buildOptions({
+        polyYes: 0,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 20,
+        venueClientsResult: fillResult,
+      });
+
+      await reconcileTick(options);
+
+      // Buy 20 YES on Kalshi with 20 NO held → auto-net: NO=20-20=0, YES=0
+      const pos = getPositions();
+      expect(pos.kalshi.no).toBe(0);
+      expect(pos.kalshi.yes).toBe(0);
+    });
+
+    test("updates local positions after unwind sell", async () => {
+      // Poly YES=10, Kalshi NO=0 → excess YES on Poly
+      // Make completing expensive so unwind is chosen
+      setVenuePositions("polymarket", { yes: 10, no: 0 });
+      setVenuePositions("kalshi", { yes: 0, no: 0 });
+      resetLastExecutionEndTs();
+
+      const expensiveQuote = makeQuote({
+        no_ask: 0.99,
+        yes_bid: 0.45,
+      });
+
+      const fillResult: OrderResult = {
+        success: true,
+        orderId: "order-test",
+        fillQty: 10,
+        fillPrice: 0.44,
+        venue: "polymarket",
+        status: "filled",
+        submittedAt: Date.now(),
+        filledAt: Date.now(),
+        error: null,
+      };
+
+      const options = buildOptions({
+        polyYes: 10,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 0,
+        quote: expensiveQuote,
+        venueClientsResult: fillResult,
+      });
+
+      await reconcileTick(options);
+
+      // After unwinding 10 YES on Polymarket, local should reflect the sell
+      const pos = getPositions();
+      expect(pos.polymarket.yes).toBe(0);
+      expect(placedOrders.length).toBe(1);
+      expect(placedOrders[0].action).toBe("sell");
+    });
+  });
+
+  describe("corrective action cooldown", () => {
+    test("second tick within 120s skips corrective action", async () => {
+      // First tick: corrective action fires
+      setVenuePositions("polymarket", { yes: 10, no: 0 });
+      setVenuePositions("kalshi", { yes: 0, no: 0 });
+      resetLastExecutionEndTs();
+
+      const fillResult: OrderResult = {
+        success: true,
+        orderId: "order-test",
+        fillQty: 10,
+        fillPrice: 0.50,
+        venue: "kalshi",
+        status: "filled",
+        submittedAt: Date.now(),
+        filledAt: Date.now(),
+        error: null,
+      };
+
+      const options = buildOptions({
+        polyYes: 10,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 0,
+        venueClientsResult: fillResult,
+      });
+
+      await reconcileTick(options);
+      expect(placedOrders.length).toBe(1);
+
+      // Second tick immediately: should be blocked by cooldown
+      // Reset local to create another imbalance (simulating the bug scenario)
+      placedOrders = [];
+      setVenuePositions("polymarket", { yes: 10, no: 0 });
+      setVenuePositions("kalshi", { yes: 0, no: 0 });
+
+      await reconcileTick(options);
+
+      // No additional orders should be placed — cooldown active
+      expect(placedOrders.length).toBe(0);
+    });
+
+    test("corrective action allowed after cooldown expires", async () => {
+      // Simulate expired cooldown by resetting state
+      setVenuePositions("polymarket", { yes: 10, no: 0 });
+      setVenuePositions("kalshi", { yes: 0, no: 0 });
+      resetLastExecutionEndTs();
+      resetReconcilerState(); // resets lastCorrectiveActionTs to 0
+
+      const fillResult: OrderResult = {
+        success: true,
+        orderId: "order-test",
+        fillQty: 10,
+        fillPrice: 0.50,
+        venue: "kalshi",
+        status: "filled",
+        submittedAt: Date.now(),
+        filledAt: Date.now(),
+        error: null,
+      };
+
+      const options = buildOptions({
+        polyYes: 10,
+        polyNo: 0,
+        kalshiYes: 0,
+        kalshiNo: 0,
+        venueClientsResult: fillResult,
+      });
+
+      await reconcileTick(options);
+
+      // Should execute since cooldown is expired (ts=0 means never)
+      expect(placedOrders.length).toBe(1);
     });
   });
 

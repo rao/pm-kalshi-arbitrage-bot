@@ -68,6 +68,9 @@ let reconcilerInterval: ReturnType<typeof setInterval> | null = null;
 /** Previous API readings per venue — for stability-based confirmation of large divergences. */
 const previousApiReading = new Map<Venue, VenuePositionReport>();
 
+/** Timestamp of last corrective action — prevents runaway loops while API catches up. */
+let lastCorrectiveActionTs = 0;
+
 /**
  * Start the periodic position reconciler.
  */
@@ -103,6 +106,7 @@ export function stopPositionReconciler(): void {
  */
 export function resetReconcilerState(): void {
   previousApiReading.clear();
+  lastCorrectiveActionTs = 0;
 }
 
 /**
@@ -439,6 +443,26 @@ async function executeCorrectiveAction(
           `[RECONCILER] Complete arb FILLED: ${result.fillQty} contracts @ $${result.fillPrice.toFixed(4)}`
         );
 
+        // Update local position to reflect the corrective fill
+        const currentPos = getPositions();
+        const venuePos = { ...currentPos[action.venue] };
+
+        if (action.venue === "kalshi") {
+          // Kalshi auto-nets: buying YES reduces NO position (and vice versa)
+          const oppositeSide: Side = action.side === "yes" ? "no" : "yes";
+          const oppositeHeld = venuePos[oppositeSide];
+          const netted = Math.min(result.fillQty, oppositeHeld);
+          venuePos[oppositeSide] -= netted;
+          venuePos[action.side] += (result.fillQty - netted);
+        } else {
+          // Polymarket: no auto-netting
+          venuePos[action.side] += result.fillQty;
+        }
+
+        setVenuePositions(action.venue, venuePos);
+        previousApiReading.delete(action.venue);
+        lastCorrectiveActionTs = Date.now();
+
         // Add pending settlement for the completed box
         if (mapping.intervalKey) {
           addPendingSettlement({
@@ -482,6 +506,14 @@ async function executeCorrectiveAction(
             `estimated loss: $${loss.toFixed(4)}`
         );
         recordPnl(-Math.abs(loss));
+
+        // Update local position to reflect the unwind sell
+        const currentPos = getPositions();
+        const venuePos = { ...currentPos[action.venue] };
+        venuePos[action.side] = Math.max(0, venuePos[action.side] - result.fillQty);
+        setVenuePositions(action.venue, venuePos);
+        previousApiReading.delete(action.venue);
+        lastCorrectiveActionTs = Date.now();
       } else {
         logger.warn(
           `[RECONCILER] Unwind FAILED: ${result.error ?? "no fill"}`
@@ -574,6 +606,15 @@ export async function reconcileTick(options: PositionReconcilerOptions): Promise
 
     if (isLiquidationInProgress()) {
       logger.info("[RECONCILER] Liquidation in progress, skipping corrective action");
+      return;
+    }
+
+    // 5b. Skip corrective action if one was taken recently (wait for API to reflect it)
+    const msSinceLastCorrective = Date.now() - lastCorrectiveActionTs;
+    if (msSinceLastCorrective < 120_000) {
+      logger.info(
+        `[RECONCILER] Corrective action cooldown (${Math.round(msSinceLastCorrective / 1000)}s / 120s), skipping`
+      );
       return;
     }
 
