@@ -38,6 +38,14 @@ describe("isPermanentVenueError", () => {
     expect(isPermanentVenueError("no fills")).toBe(false);
   });
 
+  test("detects not enough balance (Polymarket error)", () => {
+    expect(isPermanentVenueError("not enough balance / allowance")).toBe(true);
+  });
+
+  test("detects not enough balance in prefixed error string", () => {
+    expect(isPermanentVenueError("Polymarket IOC unfilled: not enough balance / allowance")).toBe(true);
+  });
+
   test("does not flag empty string", () => {
     expect(isPermanentVenueError("")).toBe(false);
   });

@@ -13,7 +13,7 @@ import type { NormalizedQuote } from "../normalization/types";
 import type { VenueClients } from "../execution/types";
 import type { Venue, Side } from "../strategy/types";
 import type { VenuePosition } from "./positionTracker";
-import { getPositions, setVenuePositions } from "./positionTracker";
+import { getPositions, setVenuePositions, getEntryVwap } from "./positionTracker";
 import {
   acquireBusyLock,
   releaseBusyLock,
@@ -328,20 +328,23 @@ function planCorrectiveAction(
     return null;
   }
 
+  // Get VWAP of the existing (excess) side — how much we paid for it
+  const existingVwap = getEntryVwap(excessVenue, excessSide) ?? 0.50;
+
   // Estimate cost to complete the arb
   const completeAsk = getCurrentAsk(missingSide, completeQuote);
   const completeFee = completeVenue === "kalshi"
     ? estimateKalshiFee(completeAsk, imbalanceQty)
     : estimatePolymarketFee(completeAsk, imbalanceQty);
-  // Revenue from completing: $1.00 per contract at settlement minus cost of missing side
-  const completeNetPnl = (1.0 * imbalanceQty) - (completeAsk * imbalanceQty) - completeFee;
+  // Revenue from completing: $1.00 per contract at settlement minus cost of BOTH sides
+  const completeNetPnl = (1.0 * imbalanceQty) - (existingVwap * imbalanceQty) - (completeAsk * imbalanceQty) - completeFee;
 
   // Estimate recovery from unwinding the excess
   const unwindBid = getCurrentBid(excessSide, excessQuote);
   const unwindFee = excessVenue === "kalshi"
     ? estimateKalshiFee(unwindBid, imbalanceQty)
     : estimatePolymarketFee(unwindBid, imbalanceQty);
-  const unwindRecovery = (unwindBid * imbalanceQty) - unwindFee;
+  const unwindNetPnl = (unwindBid * imbalanceQty) - unwindFee - (existingVwap * imbalanceQty);
 
   // Get the market ID
   let completeMarketId: string | null = null;
@@ -368,13 +371,13 @@ function planCorrectiveAction(
 
   logger.info(
     `[RECONCILER] Unhedged: totalYes=${totalYes}, totalNo=${totalNo}, ` +
-      `excess=${excessSide} on ${excessVenue}, missing=${missingSide}` +
+      `excess=${excessSide} on ${excessVenue}, missing=${missingSide}, vwap=$${existingVwap.toFixed(3)}` +
       (cappedQty < Math.round(imbalanceQty) ? ` (capped ${Math.round(imbalanceQty)}→${cappedQty})` : "") +
-      `. Complete PnL=$${completeNetPnl.toFixed(4)}, Unwind recovery=$${unwindRecovery.toFixed(4)}`
+      `. Complete PnL=$${completeNetPnl.toFixed(4)}, Unwind PnL=$${unwindNetPnl.toFixed(4)}`
   );
 
   // Pick whichever loses less money (or makes more)
-  if (completeNetPnl >= unwindRecovery && completeMarketId) {
+  if (completeNetPnl >= unwindNetPnl && completeMarketId) {
     return {
       type: "complete",
       venue: completeVenue,
@@ -392,7 +395,7 @@ function planCorrectiveAction(
       qty: cappedQty,
       price: unwindBid,
       marketId: unwindMarketId,
-      estimatedPnlImpact: -((excessSide === "yes" ? completeAsk : completeAsk) * imbalanceQty - unwindRecovery),
+      estimatedPnlImpact: unwindNetPnl,
     };
   }
 

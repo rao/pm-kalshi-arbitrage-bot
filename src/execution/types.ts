@@ -247,7 +247,7 @@ export function generateExecutionId(): string {
 /**
  * Generate a unique client order ID.
  */
-export function generateClientOrderId(venue: Venue, leg: "A" | "B" | "U"): string {
+export function generateClientOrderId(venue: Venue, leg: "A" | "B" | "U" | "T"): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 6);
   return `${venue}_${leg}_${timestamp}_${random}`;

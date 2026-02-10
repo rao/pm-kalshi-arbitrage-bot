@@ -19,9 +19,10 @@ import type {
   ExecutionRecord,
   LegExecution,
   OrderResult,
+  OrderParams,
   VenueClients,
 } from "./types";
-import { generateExecutionId } from "./types";
+import { generateExecutionId, generateClientOrderId } from "./types";
 import { RISK_PARAMS, calculateMinQuantityForPolymarket } from "../config/riskParams";
 import { msUntilRollover } from "../time/interval";
 import {
@@ -77,6 +78,7 @@ import {
 } from "../state";
 import { recordFillAttempt } from "../logging/fillTracker";
 import { logExecutionToCsv } from "../logging/mlLogger";
+import { estimatePolymarketFee, estimateKalshiFee } from "../fees/feeEngine";
 
 // Throttled log for qty capping (at most once per 30s)
 let lastQtyCapLogTs = 0;
@@ -91,6 +93,7 @@ export function isPermanentVenueError(errorMsg: string): boolean {
   return (
     lower.includes("insufficient_balance") ||
     lower.includes("insufficient balance") ||
+    lower.includes("not enough balance") ||
     lower.includes("market_closed") ||
     lower.includes("trading_closed") ||
     lower.includes("event_expired")
@@ -421,19 +424,22 @@ export async function executeOpportunity(
         realizedPnl: 0,
       }).catch(() => {});
 
+      const legAError = legAResult.error ?? legAResult.status ?? "";
+      const legAPermanent = isPermanentVenueError(legAError);
+
       return {
         success: false,
         record,
-        shouldEnterCooldown: false,
-        shouldTriggerKillSwitch: false,
-        error: `Polymarket IOC unfilled: ${legAResult.error ?? legAResult.status}`,
+        shouldEnterCooldown: legAPermanent,
+        shouldTriggerKillSwitch: legAPermanent,
+        error: `Polymarket IOC unfilled: ${legAError}`,
       };
     }
 
     // === Step 3: Leg A filled — prepare Leg B ===
     legA.fillTs = legAResult.filledAt ?? Date.now();
     const polyFillQty = legAResult.fillQty;
-    const kalshiFillQty = Math.floor(polyFillQty);
+    const kalshiFillQty = Math.round(polyFillQty);
 
     // Check if fill qty meets minimum for Kalshi hedging
     if (kalshiFillQty < RISK_PARAMS.minPartialFillQty) {
@@ -540,6 +546,48 @@ export async function executeOpportunity(
         spreadAtDetection,
         realizedPnl: result.record.realizedPnl ?? 0,
       }).catch(() => {});
+
+      // Fire-and-forget trim sell: if Polymarket filled fractionally more than Kalshi,
+      // sell the excess to prevent position drift accumulation
+      const trimExcess = legAResult.fillQty - kalshiFillQty;
+      if (trimExcess > 0.1 && venueClients) {
+        const trimBid = legA.params.side === "yes"
+          ? context.polyQuote.yes_bid
+          : context.polyQuote.no_bid;
+        if (trimBid > 0) {
+          const trimParams: OrderParams = {
+            venue: "polymarket",
+            side: legA.params.side,
+            action: "sell",
+            price: trimBid,
+            qty: trimExcess,
+            timeInForce: "IOC",
+            marketId: legA.params.marketId,
+            clientOrderId: generateClientOrderId("polymarket", "T"),
+          };
+          venueClients.placeOrder(trimParams)
+            .then((trimResult) => {
+              if (trimResult.success) {
+                console.log(`[EXECUTOR] Trim sell filled: ${trimResult.fillQty.toFixed(2)} @ $${trimResult.fillPrice.toFixed(4)}`);
+                recordFill(
+                  "polymarket",
+                  legA.params.side,
+                  "sell",
+                  trimResult.fillQty,
+                  trimResult.fillPrice,
+                  context.opportunity.intervalKey,
+                  trimResult.orderId ?? undefined,
+                  legA.params.marketId
+                );
+              } else {
+                console.log(`[EXECUTOR] Trim sell unfilled (${trimExcess.toFixed(2)} excess) — reconciler will handle`);
+              }
+            })
+            .catch((err: unknown) => {
+              console.log(`[EXECUTOR] Trim sell error (non-critical): ${err instanceof Error ? err.message : String(err)}`);
+            });
+        }
+      }
 
       return result;
     }
@@ -715,14 +763,24 @@ function handleBothFilled(
     recordLegAToLegB(Math.abs(legB.fillTs - legA.fillTs));
   }
 
-  // Calculate expected PnL at settlement
-  // Box settles at $1.00 at interval END, we paid legA + legB now
+  // Calculate expected PnL at settlement (fee-adjusted)
+  // Box settles at $1.00 at interval END, we paid legA + legB now + fees
   const totalCost =
     legAResult.fillPrice * legAResult.fillQty +
     legBResult.fillPrice * legBResult.fillQty;
   const filledQty = Math.min(legAResult.fillQty, legBResult.fillQty);
   const settledValue = 1.0 * filledQty;
-  const expectedPnl = settledValue - totalCost;
+
+  // Estimate venue fees per leg
+  const legAFee = legA.params.venue === "polymarket"
+    ? estimatePolymarketFee(legAResult.fillPrice, legAResult.fillQty)
+    : estimateKalshiFee(legAResult.fillPrice, legAResult.fillQty);
+  const legBFee = legB.params.venue === "polymarket"
+    ? estimatePolymarketFee(legBResult.fillPrice, legBResult.fillQty)
+    : estimateKalshiFee(legBResult.fillPrice, legBResult.fillQty);
+  const totalFees = legAFee + legBFee;
+
+  const expectedPnl = settledValue - totalCost - totalFees;
 
   record.status = "success";
   record.endTs = Date.now();
@@ -738,7 +796,7 @@ function handleBothFilled(
     intervalKey: context.opportunity.intervalKey,
     settlesAt: context.opportunity.intervalKey.endTs,
     expectedPnl,
-    actualCost: totalCost,
+    actualCost: totalCost + totalFees,
     qty: filledQty,
     completedAt: record.endTs,
   });

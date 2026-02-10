@@ -62,6 +62,15 @@ export interface FillRecord {
 }
 
 /**
+ * Cost-basis entry for average-cost accounting.
+ * Key format: "venue_side" or "venue_side_intervalKey"
+ */
+interface CostBasisEntry {
+  totalCost: number;
+  totalQty: number;
+}
+
+/**
  * Position tracker state.
  */
 interface PositionState {
@@ -74,6 +83,8 @@ interface PositionState {
   currentIntervalKey: string | null;
   /** Last known market IDs per venue+side, for liquidation after rollover */
   lastMarketIds: Map<string, string>;
+  /** Cost-basis ledger for average-cost VWAP (key: "venue_side_intervalKey") */
+  costBasis: Map<string, CostBasisEntry>;
 }
 
 const state: PositionState = {
@@ -85,6 +96,7 @@ const state: PositionState = {
   fillHistory: [],
   currentIntervalKey: null,
   lastMarketIds: new Map(),
+  costBasis: new Map(),
 };
 
 /** Maximum fills to keep in history */
@@ -119,6 +131,30 @@ export function recordFill(
   if (marketId) {
     state.lastMarketIds.set(`${venue}_${side}`, marketId);
   }
+
+  // Update cost-basis ledger (average-cost method)
+  const cbKey = `${venue}_${side}_${intervalKeyToString(intervalKey)}`;
+  const cb = state.costBasis.get(cbKey) ?? { totalCost: 0, totalQty: 0 };
+
+  if (action === "buy") {
+    cb.totalCost += price * qty;
+    cb.totalQty += qty;
+  } else {
+    // Sell: remove at current average cost
+    if (cb.totalQty > 0.001) {
+      const avgCost = cb.totalCost / cb.totalQty;
+      const removeQty = Math.min(qty, cb.totalQty);
+      cb.totalCost -= avgCost * removeQty;
+      cb.totalQty -= removeQty;
+    }
+    // Guard float drift
+    if (cb.totalQty < 0.001) {
+      cb.totalCost = 0;
+      cb.totalQty = 0;
+    }
+  }
+
+  state.costBasis.set(cbKey, cb);
 
   // Record fill in history
   const fill: FillRecord = {
@@ -203,6 +239,13 @@ export function clearPositionsForInterval(intervalKey: IntervalKey): void {
     state.positions.polymarket = { yes: 0, no: 0 };
     state.positions.kalshi = { yes: 0, no: 0 };
     state.currentIntervalKey = null;
+
+    // Clear cost-basis entries for this interval
+    for (const cbKey of state.costBasis.keys()) {
+      if (cbKey.endsWith(`_${key}`)) {
+        state.costBasis.delete(cbKey);
+      }
+    }
   }
 }
 
@@ -309,25 +352,26 @@ export function getMarketIdForPosition(venue: Venue, side: Side): string | null 
  * @returns VWAP of buy fills, or null if no matching fills
  */
 export function getEntryVwap(venue: Venue, side: Side, intervalKey?: IntervalKey): number | null {
-  let fills = state.fillHistory.filter(
-    (f) => f.venue === venue && f.side === side && f.action === "buy"
-  );
+  const prefix = `${venue}_${side}_`;
 
   if (intervalKey) {
     const key = intervalKeyToString(intervalKey);
-    fills = fills.filter((f) => f.intervalKey === key);
+    const cb = state.costBasis.get(`${venue}_${side}_${key}`);
+    if (!cb || cb.totalQty < 0.001) return null;
+    return cb.totalCost / cb.totalQty;
   }
 
-  if (fills.length === 0) return null;
-
+  // Aggregate all interval keys matching this venue+side
   let totalCost = 0;
   let totalQty = 0;
-  for (const fill of fills) {
-    totalCost += fill.price * fill.qty;
-    totalQty += fill.qty;
+  for (const [key, cb] of state.costBasis) {
+    if (key.startsWith(prefix) && cb.totalQty >= 0.001) {
+      totalCost += cb.totalCost;
+      totalQty += cb.totalQty;
+    }
   }
 
-  if (totalQty === 0) return null;
+  if (totalQty < 0.001) return null;
   return totalCost / totalQty;
 }
 
@@ -343,4 +387,5 @@ export function resetPositionTracker(): void {
   state.fillHistory = [];
   state.currentIntervalKey = null;
   state.lastMarketIds.clear();
+  state.costBasis.clear();
 }
