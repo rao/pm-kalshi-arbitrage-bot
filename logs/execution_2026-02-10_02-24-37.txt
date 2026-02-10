@@ -1,0 +1,69 @@
+[2026-02-10T02:24:54.166Z] [BTC_PRICE] {"price":70325.9}
+[2026-02-10T02:25:09.165Z] [BTC_PRICE] {"price":70319.9}
+[2026-02-10T02:25:24.166Z] [BTC_PRICE] {"price":70328.3}
+[2026-02-10T02:25:32.498Z] [EXECUTION_START] {"executionId":"exec_mlfzb07j_e6e0p1","intervalKey":"02:15-02:30 UTC","expectedEdgeNet":0.04289999999999996,"legA":{"venue":"polymarket","side":"yes","price":0.46},"legB":{"venue":"kalshi","side":"no","price":0.46}}
+[2026-02-10T02:25:32.498Z] [LEG_FILL] {"executionId":"exec_mlfzb07j_e6e0p1","leg":"A","venue":"polymarket","orderId":"0x1608525ab13ff445fecda0aef560749e16b1307cb094054a930b92b9c40aeca0","fillQty":50,"fillPrice":0.46,"latencyMs":643}
+[2026-02-10T02:25:32.498Z] [LEG_SUBMIT] {"executionId":"exec_mlfzb07j_e6e0p1","leg":"A","venue":"polymarket","side":"yes","price":0.46,"qty":50,"clientOrderId":"polymarket_A_mlfzb07j_ol2n"}
+[2026-02-10T02:25:32.753Z] [LEG_SUBMIT] {"executionId":"exec_mlfzb07j_e6e0p1","leg":"B","venue":"kalshi","side":"no","price":0.46,"qty":50,"clientOrderId":"kalshi_B_mlfzb07j_egu3"}
+[2026-02-10T02:25:32.753Z] [UNWIND_START] {"executionId":"exec_mlfzb07j_e6e0p1","reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","legToUnwind":{"venue":"polymarket","side":"yes","fillPrice":0.46}}
+[2026-02-10T02:25:32.753Z] [LEG_FAIL] {"executionId":"exec_mlfzb07j_e6e0p1","leg":"B","venue":"kalshi","reason":"rejected","error":"fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)"}
+[2026-02-10T02:25:39.166Z] [BTC_PRICE] {"price":70301.4}
+[2026-02-10T02:25:42.572Z] [UNWIND_RESULT] {"executionId":"exec_mlfzb07j_e6e0p1","success":true,"unwindPrice":0.41,"realizedLoss":2.4614400000000023}
+[2026-02-10T02:25:42.572Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfzb07j_e6e0p1","status":"unwound","success":false,"realizedPnl":-2.4614400000000023,"latencyMs":10717,"legALatencyMs":643,"legBLatencyMs":null}
+[2026-02-10T02:25:42.573Z] [COOLDOWN] {"reason":"Kalshi FOK failed: fill or kill insufficient resting volume (fill_or_kill_insufficient_resting_volume)","durationMs":3000}
+[2026-02-10T02:25:54.166Z] [BTC_PRICE] {"price":70303.1}
+[2026-02-10T02:26:09.166Z] [BTC_PRICE] {"price":70299.5}
+[2026-02-10T02:26:24.166Z] [BTC_PRICE] {"price":70288.2}
+[2026-02-10T02:26:39.166Z] [BTC_PRICE] {"price":70267.7}
+[2026-02-10T02:26:54.167Z] [BTC_PRICE] {"price":70284.8}
+[2026-02-10T02:27:09.167Z] [BTC_PRICE] {"price":70266.2}
+[2026-02-10T02:27:24.167Z] [BTC_PRICE] {"price":70268.9}
+[2026-02-10T02:27:39.167Z] [BTC_PRICE] {"price":70264.1}
+[2026-02-10T02:27:54.168Z] [BTC_PRICE] {"price":70245.2}
+[2026-02-10T02:28:09.168Z] [BTC_PRICE] {"price":70222.4}
+[2026-02-10T02:28:24.168Z] [BTC_PRICE] {"price":70223.4}
+[2026-02-10T02:28:39.168Z] [BTC_PRICE] {"price":70226.4}
+[2026-02-10T02:28:54.169Z] [BTC_PRICE] {"price":70212.7}
+[2026-02-10T02:29:09.169Z] [BTC_PRICE] {"price":70212.6}
+[2026-02-10T02:29:24.170Z] [BTC_PRICE] {"price":70223.2}
+[2026-02-10T02:29:39.170Z] [BTC_PRICE] {"price":70214.7}
+[2026-02-10T02:29:54.170Z] [BTC_PRICE] {"price":70208.7}
+[2026-02-10T02:30:09.170Z] [BTC_PRICE] {"price":70212.9}
+[2026-02-10T02:30:24.171Z] [BTC_PRICE] {"price":70194.1}
+[2026-02-10T02:30:39.171Z] [BTC_PRICE] {"price":70212.7}
+[2026-02-10T02:30:54.171Z] [BTC_PRICE] {"price":70181.8}
+[2026-02-10T02:31:09.172Z] [BTC_PRICE] {"price":70165.1}
+[2026-02-10T02:31:24.171Z] [BTC_PRICE] {"price":70227.7}
+[2026-02-10T02:31:39.172Z] [BTC_PRICE] {"price":70220.4}
+[2026-02-10T02:31:54.171Z] [BTC_PRICE] {"price":70225}
+[2026-02-10T02:32:09.171Z] [BTC_PRICE] {"price":70238.1}
+[2026-02-10T02:32:24.172Z] [BTC_PRICE] {"price":70250.8}
+[2026-02-10T02:32:39.172Z] [BTC_PRICE] {"price":70252.4}
+[2026-02-10T02:32:54.172Z] [BTC_PRICE] {"price":70211.2}
+[2026-02-10T02:33:09.172Z] [BTC_PRICE] {"price":70231.3}
+[2026-02-10T02:33:24.172Z] [BTC_PRICE] {"price":70236.5}
+[2026-02-10T02:33:39.173Z] [BTC_PRICE] {"price":70243.4}
+[2026-02-10T02:33:54.173Z] [BTC_PRICE] {"price":70236.5}
+[2026-02-10T02:34:09.173Z] [BTC_PRICE] {"price":70254.2}
+[2026-02-10T02:34:24.173Z] [BTC_PRICE] {"price":70249.7}
+[2026-02-10T02:34:39.173Z] [BTC_PRICE] {"price":70237.5}
+[2026-02-10T02:34:54.173Z] [BTC_PRICE] {"price":70218.3}
+[2026-02-10T02:35:04.281Z] [LEG_FAIL] {"executionId":"exec_mlfzn84b_7orubl","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-10T02:35:04.281Z] [EXECUTION_START] {"executionId":"exec_mlfzn84b_7orubl","intervalKey":"02:30-02:45 UTC","expectedEdgeNet":0.05199999999999997,"legA":{"venue":"polymarket","side":"no","price":0.51},"legB":{"venue":"kalshi","side":"yes","price":0.4}}
+[2026-02-10T02:35:04.281Z] [LEG_SUBMIT] {"executionId":"exec_mlfzn84b_7orubl","leg":"A","venue":"polymarket","side":"no","price":0.51,"qty":21,"clientOrderId":"polymarket_A_mlfzn84b_869b"}
+[2026-02-10T02:35:04.281Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfzn84b_7orubl","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":2302,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-10T02:35:09.174Z] [BTC_PRICE] {"price":70195.8}
+[2026-02-10T02:35:24.174Z] [BTC_PRICE] {"price":70172.8}
+[2026-02-10T02:35:29.067Z] [EXECUTION_START] {"executionId":"exec_mlfznrj0_i5a20l","intervalKey":"02:30-02:45 UTC","expectedEdgeNet":0.04149999999999996,"legA":{"venue":"polymarket","side":"no","price":0.64},"legB":{"venue":"kalshi","side":"yes","price":0.28}}
+[2026-02-10T02:35:29.067Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfznrj0_i5a20l","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":1935,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-10T02:35:29.067Z] [LEG_FAIL] {"executionId":"exec_mlfznrj0_i5a20l","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-10T02:35:29.067Z] [LEG_SUBMIT] {"executionId":"exec_mlfznrj0_i5a20l","leg":"A","venue":"polymarket","side":"no","price":0.64,"qty":50,"clientOrderId":"polymarket_A_mlfznrj0_35cl"}
+[2026-02-10T02:35:39.174Z] [BTC_PRICE] {"price":70099.2}
+[2026-02-10T02:35:54.174Z] [BTC_PRICE] {"price":70117.9}
+[2026-02-10T02:36:09.174Z] [BTC_PRICE] {"price":70149.9}
+[2026-02-10T02:36:24.174Z] [BTC_PRICE] {"price":70149.9}
+[2026-02-10T02:36:36.845Z] [EXECUTION_START] {"executionId":"exec_mlfzp8qq_456z0e","intervalKey":"02:30-02:45 UTC","expectedEdgeNet":0.041599999999999956,"legA":{"venue":"polymarket","side":"no","price":0.66},"legB":{"venue":"kalshi","side":"yes","price":0.26}}
+[2026-02-10T02:36:36.845Z] [LEG_SUBMIT] {"executionId":"exec_mlfzp8qq_456z0e","leg":"A","venue":"polymarket","side":"no","price":0.66,"qty":13,"clientOrderId":"polymarket_A_mlfzp8qp_772n"}
+[2026-02-10T02:36:36.845Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlfzp8qq_456z0e","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":747,"legALatencyMs":0,"legBLatencyMs":null}
+[2026-02-10T02:36:36.845Z] [LEG_FAIL] {"executionId":"exec_mlfzp8qq_456z0e","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
+[2026-02-10T02:36:39.175Z] [BTC_PRICE] {"price":70143}
