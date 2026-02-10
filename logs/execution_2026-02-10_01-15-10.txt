@@ -1,0 +1,1 @@
+[2026-02-10T01:15:15.755Z] [KILL_SWITCH] {"dailyLoss":2.45,"maxDailyLoss":10,"trigger":"kalshi low balance: $2.45"}

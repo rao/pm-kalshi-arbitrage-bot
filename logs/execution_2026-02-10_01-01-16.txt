@@ -1,0 +1,1 @@
+[2026-02-10T01:01:22.038Z] [KILL_SWITCH] {"dailyLoss":0.400695,"maxDailyLoss":10,"trigger":"polymarket low balance: $0.40"}
