@@ -37,8 +37,12 @@ import {
   isKillSwitchTriggered,
   isInCooldown,
   enterCooldown,
+  clearCooldown,
   triggerKillSwitch,
+  getKillSwitchReason,
+  attemptKillSwitchRecovery,
   getDailyLoss,
+  resetNotional,
   settlePending,
   initializeVenueClients,
   createLiveVenueClients,
@@ -53,6 +57,7 @@ import {
 import {
   logOpportunityDetected,
   logKillSwitch,
+  logKillSwitchRecovery,
   logCooldownEntry,
   logExecutionError,
 } from "./logging/executionLogger";
@@ -220,7 +225,10 @@ async function attemptExecution(opportunity: Opportunity): Promise<void> {
     }
 
     if (result.shouldTriggerKillSwitch) {
-      triggerKillSwitch();
+      const reason = getDailyLoss() >= RISK_PARAMS.maxDailyLoss
+        ? "daily_loss"
+        : `execution_failure: ${result.error ?? "unknown"}`;
+      triggerKillSwitch(reason);
       logKillSwitch(
         getDailyLoss(),
         RISK_PARAMS.maxDailyLoss,
@@ -416,6 +424,21 @@ function handleCoordinatorEvent(event: CoordinatorEvent): void {
       resetBtcPriceStore();
       twapResetForInterval();
       state.volatilityExitManager?.resetForInterval();
+
+      // 10. Reset notional (positions settled at interval end, start fresh)
+      resetNotional();
+
+      // 11. Clear cooldown (new interval = clean slate)
+      clearCooldown();
+
+      // 12. Attempt kill switch auto-recovery if safe
+      if (isKillSwitchTriggered()) {
+        const previousReason = getKillSwitchReason();
+        const recovered = attemptKillSwitchRecovery();
+        if (recovered) {
+          logKillSwitchRecovery("rollover", { previousReason });
+        }
+      }
       break;
     }
 
@@ -675,8 +698,21 @@ async function main(): Promise<void> {
           state.logger.error(
             `[BALANCE] ${venue} balance $${balance.toFixed(2)} below minimum $${RISK_PARAMS.minVenueBalance} — triggering kill switch`
           );
-          triggerKillSwitch();
+          triggerKillSwitch(`low_balance_${venue}`);
           logKillSwitch(balance, RISK_PARAMS.minVenueBalance, `${venue} low balance: $${balance.toFixed(2)}`);
+        }
+      },
+      onBalancesHealthy: (kalshiBalance, polyBalance) => {
+        if (isKillSwitchTriggered()) {
+          const previousReason = getKillSwitchReason();
+          const recovered = attemptKillSwitchRecovery();
+          if (recovered) {
+            logKillSwitchRecovery("balances_healthy", {
+              previousReason,
+              kalshiBalance: `$${kalshiBalance.toFixed(2)}`,
+              polyBalance: `$${polyBalance.toFixed(2)}`,
+            });
+          }
         }
       },
     });

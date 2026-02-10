@@ -55,6 +55,11 @@ let dailyUnwindLoss = 0;
 let liquidationInProgress = false;
 
 /**
+ * Reason the kill switch was triggered (null if not triggered).
+ */
+let killSwitchReason: string | null = null;
+
+/**
  * Timestamp when the last execution (arb or reconciler corrective) ended.
  * Used by the reconciler to skip ticks during a grace period while
  * venue APIs (especially Polymarket on-chain) may not reflect recent fills.
@@ -244,9 +249,12 @@ export function getDailyUnwindLoss(): number {
 
 /**
  * Trigger the kill switch - stops all trading.
+ *
+ * @param reason - Why the kill switch was triggered (for recovery decisions)
  */
-export function triggerKillSwitch(): void {
+export function triggerKillSwitch(reason?: string): void {
   state.killSwitchTriggered = true;
+  killSwitchReason = reason ?? "unknown";
 }
 
 /**
@@ -257,12 +265,59 @@ export function isKillSwitchTriggered(): boolean {
 }
 
 /**
+ * Get the reason why the kill switch was triggered.
+ *
+ * @returns The reason string, or null if kill switch is not active.
+ */
+export function getKillSwitchReason(): string | null {
+  return killSwitchReason;
+}
+
+/**
  * Reset the kill switch (manual operation).
  *
  * Only call this after investigating why kill switch was triggered.
  */
 export function resetKillSwitch(): void {
   state.killSwitchTriggered = false;
+  killSwitchReason = null;
+}
+
+/**
+ * Attempt to auto-recover from kill switch.
+ *
+ * Resets kill switch ONLY if safe to do so:
+ * - Kill switch IS currently active
+ * - Reason is NOT "daily_loss" (permanent until midnight)
+ * - Daily loss is below max threshold
+ * - No liquidation in progress
+ *
+ * @returns true if recovery succeeded, false if blocked
+ */
+export function attemptKillSwitchRecovery(): boolean {
+  if (!state.killSwitchTriggered) {
+    return false;
+  }
+
+  // Never auto-recover from daily loss kill switch
+  if (killSwitchReason === "daily_loss") {
+    return false;
+  }
+
+  // Safety check: don't recover if daily loss is at/above max
+  if (getDailyLoss() >= RISK_PARAMS.maxDailyLoss) {
+    return false;
+  }
+
+  // Don't recover during active liquidation
+  if (liquidationInProgress) {
+    return false;
+  }
+
+  // Safe to recover
+  state.killSwitchTriggered = false;
+  killSwitchReason = null;
+  return true;
 }
 
 /**
@@ -369,6 +424,7 @@ export function resetAllState(): void {
   dailyUnwindLoss = 0;
   liquidationInProgress = false;
   lastExecutionEndTs = 0;
+  killSwitchReason = null;
   pendingSettlements.clear();
 }
 

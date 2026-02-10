@@ -22,6 +22,8 @@ export interface BalanceMonitorOptions {
   intervalMs?: number;
   /** Callback when a venue has low balance */
   onLowBalance: (venue: "polymarket" | "kalshi", balance: number) => void;
+  /** Callback when both venues have healthy balances (>= min) */
+  onBalancesHealthy?: (kalshiBalance: number, polyBalance: number) => void;
 }
 
 let monitorInterval: ReturnType<typeof setInterval> | null = null;
@@ -39,6 +41,7 @@ export function startBalanceMonitor(options: BalanceMonitorOptions): void {
     minBalanceDollars,
     intervalMs = 60000,
     onLowBalance,
+    onBalancesHealthy,
   } = options;
 
   if (monitorInterval) {
@@ -49,10 +52,10 @@ export function startBalanceMonitor(options: BalanceMonitorOptions): void {
   logger.info(`[BALANCE] Starting balance monitor (interval=${intervalMs}ms, min=$${minBalanceDollars})`);
 
   // Run first check after a short delay (don't block startup)
-  setTimeout(() => checkBalances(venueClients, logger, minBalanceDollars, onLowBalance), 5000);
+  setTimeout(() => checkBalances(venueClients, logger, minBalanceDollars, onLowBalance, onBalancesHealthy), 5000);
 
   monitorInterval = setInterval(
-    () => checkBalances(venueClients, logger, minBalanceDollars, onLowBalance),
+    () => checkBalances(venueClients, logger, minBalanceDollars, onLowBalance, onBalancesHealthy),
     intervalMs
   );
 }
@@ -74,16 +77,20 @@ async function checkBalances(
   venueClients: InitializedClients,
   logger: Logger,
   minBalanceDollars: number,
-  onLowBalance: (venue: "polymarket" | "kalshi", balance: number) => void
+  onLowBalance: (venue: "polymarket" | "kalshi", balance: number) => void,
+  onBalancesHealthy?: (kalshiBalance: number, polyBalance: number) => void
 ): Promise<void> {
   const [kalshiResult, polyResult] = await Promise.allSettled([
     venueClients.kalshi ? getKalshiBalance(venueClients) : Promise.resolve(null),
     venueClients.polymarket ? venueClients.polymarket.getCollateralBalance() : Promise.resolve(null),
   ]);
 
+  let kalshiBalance: number | null = null;
+  let polyBalance: number | null = null;
+
   // Process Kalshi result
   if (kalshiResult.status === "fulfilled" && kalshiResult.value !== null) {
-    const kalshiBalance = kalshiResult.value;
+    kalshiBalance = kalshiResult.value;
     logger.debug(`[BALANCE] Kalshi: $${kalshiBalance.toFixed(2)}`);
     if (kalshiBalance < minBalanceDollars) {
       logger.warn(`[BALANCE] Kalshi balance LOW: $${kalshiBalance.toFixed(2)} < $${minBalanceDollars}`);
@@ -96,7 +103,7 @@ async function checkBalances(
 
   // Process Polymarket result
   if (polyResult.status === "fulfilled" && polyResult.value !== null) {
-    const polyBalance = polyResult.value;
+    polyBalance = polyResult.value;
     logger.debug(`[BALANCE] Polymarket: $${polyBalance.toFixed(2)}`);
     if (polyBalance < minBalanceDollars) {
       logger.warn(`[BALANCE] Polymarket balance LOW: $${polyBalance.toFixed(2)} < $${minBalanceDollars}`);
@@ -105,6 +112,17 @@ async function checkBalances(
   } else if (polyResult.status === "rejected") {
     const err = polyResult.reason;
     logger.warn(`[BALANCE] Failed to check Polymarket balance: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  // If both balances are healthy, call the healthy callback
+  if (
+    onBalancesHealthy &&
+    kalshiBalance !== null &&
+    polyBalance !== null &&
+    kalshiBalance >= minBalanceDollars &&
+    polyBalance >= minBalanceDollars
+  ) {
+    onBalancesHealthy(kalshiBalance, polyBalance);
   }
 }
 

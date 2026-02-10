@@ -26,6 +26,7 @@ export type ExecutionLogType =
   | "UNWIND_RESULT"
   | "EXECUTION_COMPLETE"
   | "KILL_SWITCH"
+  | "KILL_SWITCH_RECOVERY"
   | "COOLDOWN"
   | "ERROR"
   | "STATE"
@@ -233,6 +234,17 @@ export async function logKillSwitchToFile(data: {
   trigger: string;
 }): Promise<void> {
   await logEntry("KILL_SWITCH", data);
+}
+
+/**
+ * Log kill switch recovery.
+ */
+export async function logKillSwitchRecoveryToFile(data: {
+  trigger: string;
+  previousReason: string;
+  details?: Record<string, unknown>;
+}): Promise<void> {
+  await logEntry("KILL_SWITCH_RECOVERY", data);
 }
 
 /**

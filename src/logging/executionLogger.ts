@@ -25,6 +25,7 @@ import {
   logUnwindResultToFile,
   logExecutionCompleteToFile,
   logKillSwitchToFile,
+  logKillSwitchRecoveryToFile,
   logCooldownToFile,
   logErrorToFile,
 } from "./fileLogger";
@@ -347,6 +348,35 @@ export function logKillSwitch(
     dailyLoss,
     maxDailyLoss,
     trigger,
+  }).catch(() => {});
+}
+
+/**
+ * Log kill switch recovery.
+ */
+export function logKillSwitchRecovery(
+  trigger: string,
+  details?: Record<string, unknown>
+): void {
+  // Console output - prominent banner
+  console.log("");
+  console.log("*".repeat(70));
+  console.log(`[${formatTimestamp()}] *** KILL SWITCH RECOVERED ***`);
+  console.log(`  Trigger: ${trigger}`);
+  if (details) {
+    for (const [key, value] of Object.entries(details)) {
+      console.log(`  ${key}: ${value}`);
+    }
+  }
+  console.log("  Trading RESUMED");
+  console.log("*".repeat(70));
+  console.log("");
+
+  // File output
+  logKillSwitchRecoveryToFile({
+    trigger,
+    previousReason: details?.previousReason as string ?? "unknown",
+    details,
   }).catch(() => {});
 }
 
