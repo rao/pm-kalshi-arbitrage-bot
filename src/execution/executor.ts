@@ -78,6 +78,9 @@ import {
 import { recordFillAttempt } from "../logging/fillTracker";
 import { logExecutionToCsv } from "../logging/mlLogger";
 
+// Throttled log for qty capping (at most once per 30s)
+let lastQtyCapLogTs = 0;
+
 
 /**
  * Detect permanent venue errors that won't resolve with a retry.
@@ -231,7 +234,11 @@ export async function executeOpportunity(
     const maxQtyFromNotional = Math.floor(remainingNotional / costPerContract);
 
     if (maxQtyFromNotional < qty) {
-      console.log(`[EXECUTOR] Capped qty from ${qty} to ${maxQtyFromNotional} due to notional limit (remaining=$${remainingNotional.toFixed(2)}, cost/contract=$${costPerContract.toFixed(3)})`);
+      const now = Date.now();
+      if (now - lastQtyCapLogTs >= 30_000) {
+        lastQtyCapLogTs = now;
+        console.log(`[EXECUTOR] Capped qty from ${qty} to ${maxQtyFromNotional} due to notional limit (remaining=$${remainingNotional.toFixed(2)}, cost/contract=$${costPerContract.toFixed(3)})`);
+      }
       qty = maxQtyFromNotional;
     }
 
