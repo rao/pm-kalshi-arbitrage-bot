@@ -80,6 +80,22 @@ import { logExecutionToCsv } from "../logging/mlLogger";
 
 
 /**
+ * Detect permanent venue errors that won't resolve with a retry.
+ * These should trigger an immediate kill switch rather than cooldown-and-retry.
+ */
+export function isPermanentVenueError(errorMsg: string): boolean {
+  const lower = errorMsg.toLowerCase();
+  return (
+    lower.includes("insufficient_balance") ||
+    lower.includes("insufficient balance") ||
+    lower.includes("market_closed") ||
+    lower.includes("trading_closed") ||
+    lower.includes("event_expired")
+  );
+}
+
+
+/**
  * Create initial leg execution structure.
  */
 function createLegExecution(
@@ -820,9 +836,16 @@ async function handleParallelUnwind(
     console.error(`[EXECUTOR] Position snapshot: poly(yes=${posSnapshot.polymarket.yes}, no=${posSnapshot.polymarket.no}) kalshi(yes=${posSnapshot.kalshi.yes}, no=${posSnapshot.kalshi.no})`);
   }
 
-  // Check if this loss triggers kill switch (either from daily loss OR unwind failure)
+  // Check if the failure was a permanent venue error (e.g. insufficient_balance)
+  const permanentError = isPermanentVenueError(reason);
+  if (permanentError) {
+    console.error(`[EXECUTOR] Permanent venue error detected: ${reason}`);
+    console.error(`[EXECUTOR] Triggering kill switch to prevent repeated failed executions.`);
+  }
+
+  // Check if this loss triggers kill switch (daily loss, unwind failure, OR permanent venue error)
   const shouldTriggerKillSwitch =
-    getDailyLoss() >= RISK_PARAMS.maxDailyLoss || unwindFailed;
+    getDailyLoss() >= RISK_PARAMS.maxDailyLoss || unwindFailed || permanentError;
 
   // Post-execution position verification
   const postPositions = getPositions();
