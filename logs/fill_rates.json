@@ -1409,5 +1409,39 @@
     "avgSpreadAtDetection": 0.016109297263681596,
     "totalPnl": 76.28216052739594,
     "lastUpdated": 1770698302496
+  },
+  "1770699600-1770700500": {
+    "interval": "1770699600-1770700500",
+    "intervalDisplay": "05:00-05:15 UTC",
+    "hourOfDay": 5,
+    "attempts": 4,
+    "polyFills": 2,
+    "polyMisses": 2,
+    "kalshiFills": 0,
+    "kalshiMisses": 2,
+    "partialFills": 0,
+    "avgPolyLatencyMs": 723,
+    "avgKalshiLatencyMs": 252,
+    "avgEdgeNet": 0.044475000000000035,
+    "avgSpreadAtDetection": 0.017500000000000005,
+    "totalPnl": 0,
+    "lastUpdated": 1770700322733
+  },
+  "1770700500-1770701400": {
+    "interval": "1770700500-1770701400",
+    "intervalDisplay": "05:15-05:30 UTC",
+    "hourOfDay": 5,
+    "attempts": 34,
+    "polyFills": 29,
+    "polyMisses": 5,
+    "kalshiFills": 16,
+    "kalshiMisses": 13,
+    "partialFills": 0,
+    "avgPolyLatencyMs": 753.1724137931035,
+    "avgKalshiLatencyMs": 186.20689655172413,
+    "avgEdgeNet": 0.10340294117647057,
+    "avgSpreadAtDetection": 0.0186764705882353,
+    "totalPnl": 98.02534821294115,
+    "lastUpdated": 1770700864201
   }
 }
