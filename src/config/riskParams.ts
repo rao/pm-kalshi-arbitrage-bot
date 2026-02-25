@@ -1,7 +1,7 @@
 /**
  * Risk parameters for v0.1 conservative trading.
  *
- * Per CLAUDE.md spec, these are intentionally conservative:
+ * These are intentionally conservative:
  * - $10 max total, $5 per venue
  * - 1 contract per leg (correctness over profit)
  * - 4 cent minimum net edge

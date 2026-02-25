@@ -169,6 +169,7 @@ export class MarketDataCoordinator {
       this.btcPriceClient = new BinanceWsClient({
         ...options.binanceWsOptions,
         debug: options.debug,
+        enableOrderBook: true,
       });
     }
   }
