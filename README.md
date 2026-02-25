@@ -4,7 +4,7 @@ Cross-venue arbitrage bot for 15-minute BTC Up/Down prediction markets on [Polym
 
 Monitors both venues in real time via WebSockets, detects net-positive "box" arbitrage opportunities (buy YES on one venue + buy NO on the other for < $1.00 combined), and executes with a two-phase commit strategy and automatic unwind on failure.
 
-**IMPORTANT NOTE**: This bot fully works. It made me money, 100% profit over some hours. It just is not sustainable long-term due to oracle resolution differences on both of the platforms, which can lead to wipeouts and what I like to call price "dead zones", and you end up losing your balance on both platforms. Proceed with caution. If you can end up fixing and avoiding these possible dead zones, you will end up profiting long-term, but it is dangerous to use this program otherwise.
+**IMPORTANT NOTE**: This bot fully works. It made me money, 100% profit over some hours. It just is not sustainable long-term due to oracle resolution differences on both of the platforms, which can lead to wipeouts and what I like to call price "dead zones", and you end up losing your balance on both platforms. **Proceed with caution.** If you can end up fixing and avoiding these possible dead zones, you will end up profiting long-term, but it is **dangerous** to use this program otherwise.
 
 ## How It Works
 
