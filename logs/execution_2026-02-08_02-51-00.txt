@@ -1,4 +1,0 @@
-[2026-02-08T02:53:42.605Z] [EXECUTION_START] {"executionId":"exec_mld5firg_uze46o","intervalKey":"02:45-03:00 UTC","expectedEdgeNet":0.04359999999999995,"legA":{"venue":"polymarket","side":"no","price":0.76},"legB":{"venue":"kalshi","side":"yes","price":0.17}}
-[2026-02-08T02:53:42.605Z] [LEG_SUBMIT] {"executionId":"exec_mld5firg_uze46o","leg":"A","venue":"polymarket","side":"no","price":0.76,"qty":16,"clientOrderId":"polymarket_A_mld5firg_pgiy"}
-[2026-02-08T02:53:42.606Z] [EXECUTION_COMPLETE] {"executionId":"exec_mld5firg_uze46o","status":"leg_a_failed","success":false,"realizedPnl":0,"latencyMs":913,"legALatencyMs":0,"legBLatencyMs":null}
-[2026-02-08T02:53:42.605Z] [LEG_FAIL] {"executionId":"exec_mld5firg_uze46o","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}

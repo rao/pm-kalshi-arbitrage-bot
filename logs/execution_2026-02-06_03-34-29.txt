@@ -1,9 +1,0 @@
-[2026-02-06T03:35:23.686Z] [LEG_SUBMIT] {"executionId":"exec_mlac1fz7_cae006","leg":"A","venue":"polymarket","side":"no","price":0.28,"qty":50,"clientOrderId":"polymarket_A_mlac1fz7_gw12"}
-[2026-02-06T03:35:23.683Z] [EXECUTION_START] {"executionId":"exec_mlac1fz7_cae006","intervalKey":"03:30-03:45 UTC","expectedEdgeNet":0.04499999999999998,"legA":{"venue":"polymarket","side":"no","price":0.28},"legB":{"venue":"kalshi","side":"yes","price":0.62}}
-[2026-02-06T03:35:23.687Z] [LEG_SUBMIT] {"executionId":"exec_mlac1fz7_cae006","leg":"B","venue":"kalshi","side":"yes","price":0.62,"qty":50,"clientOrderId":"kalshi_B_mlac1fz7_bk6s"}
-[2026-02-06T03:35:25.637Z] [LEG_FAIL] {"executionId":"exec_mlac1fz7_cae006","leg":"A","venue":"polymarket","reason":"rejected","error":"Order not filled"}
-[2026-02-06T03:35:25.637Z] [LEG_FILL] {"executionId":"exec_mlac1fz7_cae006","leg":"B","venue":"kalshi","orderId":"01b56025-d46e-4abc-b8cf-01054f9519e8","fillQty":50,"fillPrice":0.62,"latencyMs":1951}
-[2026-02-06T03:35:25.637Z] [UNWIND_START] {"executionId":"exec_mlac1fz7_cae006","reason":"Leg A failed: Order not filled","legToUnwind":{"venue":"kalshi","side":"yes","fillPrice":0.62}}
-[2026-02-06T03:35:26.337Z] [EXECUTION_COMPLETE] {"executionId":"exec_mlac1fz7_cae006","status":"unwound","success":false,"realizedPnl":-1.5000000000000013,"latencyMs":2654,"legALatencyMs":0,"legBLatencyMs":369}
-[2026-02-06T03:35:26.337Z] [UNWIND_RESULT] {"executionId":"exec_mlac1fz7_cae006","success":true,"unwindPrice":0.59,"realizedLoss":1.5000000000000013}
-[2026-02-06T03:35:26.338Z] [COOLDOWN] {"reason":"Leg A failed: Order not filled","durationMs":3000}
