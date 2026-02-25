@@ -1,4 +1,4 @@
-# arbBot
+# Polymarket & Kalshi Arbitrage Bot
 
 Cross-venue arbitrage bot for 15-minute BTC Up/Down prediction markets on [Polymarket](https://polymarket.com) and [Kalshi](https://kalshi.com).
 
