@@ -104,21 +104,7 @@ These default to production endpoints and rarely need changing:
 | `POLYMARKET_CLOB_HOST` | `https://clob.polymarket.com` |
 | `KALSHI_API_HOST` | `https://api.elections.kalshi.com` |
 
-### 3. Set up Polymarket token approvals
-
-Before the bot can trade on Polymarket, your wallet needs to approve the USDC and CTF (Conditional Token Framework) contracts:
-
-```bash
-bun run setup:allowances
-```
-
-Verify approvals are set:
-
-```bash
-bun run check:allowances
-```
-
-### 4. Verify market discovery
+### 3. Verify market discovery
 
 Make sure the bot can find active markets on both venues:
 
@@ -132,7 +118,7 @@ This prints the current 15-minute interval and the corresponding market IDs on P
 bun run discover:watch
 ```
 
-### 5. Test WebSocket connections
+### 4. Test WebSocket connections
 
 ```bash
 bun scripts/smoke_test_ws.ts
